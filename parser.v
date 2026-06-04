@@ -1,0 +1,178 @@
+module vmail_mime
+
+pub fn parse(raw string) !Message {
+	if raw.trim_space() == '' {
+		return error('eml content is required')
+	}
+	headers_text, body := split_header_body(raw)
+	headers := parse_headers(headers_text)
+	mut parsed := ParsedMessage{
+		subject: decode_rfc2047_header(header_value(headers, 'subject'))
+	}
+	parse_part(headers, body, mut parsed)!
+	return Message{
+		subject:     parsed.subject
+		text:        parsed.text
+		attachments: parsed.attachments
+	}
+}
+
+fn parse_part(headers map[string]string, body string, mut parsed ParsedMessage) ! {
+	content_type := header_value(headers, 'content-type')
+	disposition := header_value(headers, 'content-disposition')
+	transfer_encoding := header_value(headers, 'content-transfer-encoding').to_lower()
+	mime_type := mime_base(content_type)
+	if mime_type.starts_with('multipart/') {
+		boundary := mime_param(content_type, 'boundary')
+		if boundary == '' {
+			return
+		}
+		for part in split_multipart_body(body, boundary) {
+			part_headers_text, part_body := split_header_body(part)
+			parse_part(parse_headers(part_headers_text), part_body, mut parsed)!
+		}
+		return
+	}
+	if mime_type == 'message/rfc822' {
+		nested_headers_text, nested_body := split_header_body(body)
+		parse_part(parse_headers(nested_headers_text), nested_body, mut parsed)!
+		return
+	}
+	decoded := decode_transfer_body(body, transfer_encoding)
+	filename := attachment_name(disposition, content_type)
+	is_attachment := disposition.to_lower().contains('attachment') || filename != ''
+	if is_attachment || (!mime_type.starts_with('text/') && decoded.len > 0) {
+		parsed.attachments << Attachment{
+			name:      decode_rfc2047_header(filename)
+			mime_type: if mime_type == '' { 'application/octet-stream' } else { mime_type }
+			bytes:     decoded
+		}
+		return
+	}
+	if parsed.text == '' {
+		text := decoded.bytestr()
+		if mime_type == 'text/plain' || mime_type == '' {
+			parsed.text = text.trim_space()
+		} else if mime_type == 'text/html' {
+			parsed.text = html_to_text(text).trim_space()
+		}
+	}
+}
+
+fn split_header_body(raw string) (string, string) {
+	if raw.contains('\r\n\r\n') {
+		return raw.all_before('\r\n\r\n'), raw.all_after('\r\n\r\n')
+	}
+	if raw.contains('\n\n') {
+		return raw.all_before('\n\n'), raw.all_after('\n\n')
+	}
+	return raw, ''
+}
+
+fn parse_headers(raw string) map[string]string {
+	mut out := map[string]string{}
+	mut current_key := ''
+	for line in raw.replace('\r\n', '\n').split('\n') {
+		if line == '' {
+			continue
+		}
+		if (line.starts_with(' ') || line.starts_with('\t')) && current_key != '' {
+			out[current_key] = '${out[current_key]} ${line.trim_space()}'
+			continue
+		}
+		if !line.contains(':') {
+			continue
+		}
+		key := line.all_before(':').trim_space().to_lower()
+		value := line.all_after(':').trim_space()
+		if key != '' {
+			out[key] = value
+			current_key = key
+		}
+	}
+	return out
+}
+
+fn header_value(headers map[string]string, key string) string {
+	return headers[key.to_lower()] or { '' }
+}
+
+fn mime_base(value string) string {
+	return value.all_before(';').trim_space().to_lower()
+}
+
+fn mime_param(value string, name string) string {
+	needle := name.to_lower()
+	for part in split_mime_header(value) {
+		if !part.contains('=') {
+			continue
+		}
+		key := part.all_before('=').trim_space().to_lower()
+		if key == needle || key == '${needle}*' {
+			return decode_rfc2231_value(unquote_mime_value(part.all_after('=').trim_space()))
+		}
+	}
+	return ''
+}
+
+fn split_mime_header(value string) []string {
+	mut out := []string{}
+	mut current := ''
+	mut quoted := false
+	for i := 0; i < value.len; i++ {
+		ch := value[i]
+		if ch == `"` {
+			quoted = !quoted
+			current += ch.ascii_str()
+			continue
+		}
+		if ch == `;` && !quoted {
+			out << current
+			current = ''
+			continue
+		}
+		current += ch.ascii_str()
+	}
+	out << current
+	return out
+}
+
+fn unquote_mime_value(value string) string {
+	clean := value.trim_space()
+	if clean.len >= 2 && clean.starts_with('"') && clean.ends_with('"') {
+		return clean[1..clean.len - 1]
+	}
+	return clean
+}
+
+fn split_multipart_body(body string, boundary string) []string {
+	delimiter := '--${boundary}'
+	mut parts := []string{}
+	mut current := ''
+	mut in_part := false
+	for line in body.replace('\r\n', '\n').split('\n') {
+		if line == delimiter || line == '${delimiter}--' {
+			if in_part && current != '' {
+				parts << current.trim_right('\n')
+			}
+			current = ''
+			in_part = line != '${delimiter}--'
+			continue
+		}
+		if in_part {
+			current += line + '\n'
+		}
+	}
+	if in_part && current != '' {
+		parts << current.trim_right('\n')
+	}
+	return parts
+}
+
+fn attachment_name(disposition string, content_type string) string {
+	name := mime_param(disposition, 'filename')
+	if name != '' {
+		return name
+	}
+	return mime_param(content_type, 'name')
+}
