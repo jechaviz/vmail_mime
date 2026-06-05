@@ -103,7 +103,11 @@ fn mime_base(value string) string {
 
 fn mime_param(value string, name string) string {
 	needle := name.to_lower()
-	for part in split_mime_header(value) {
+	parts := split_mime_header(value)
+	if continued := mime_continued_param(parts, needle) {
+		return continued
+	}
+	for part in parts {
 		if !part.contains('=') {
 			continue
 		}
@@ -113,6 +117,54 @@ fn mime_param(value string, name string) string {
 		}
 	}
 	return ''
+}
+
+fn mime_continued_param(parts []string, needle string) ?string {
+	mut segments := map[int]string{}
+	for part in parts {
+		if !part.contains('=') {
+			continue
+		}
+		key := part.all_before('=').trim_space().to_lower()
+		if !key.starts_with('${needle}*') || key == '${needle}*' {
+			continue
+		}
+		raw_index := key[needle.len + 1..]
+		encoded := raw_index.ends_with('*')
+		index_text := if encoded { raw_index[..raw_index.len - 1] } else { raw_index }
+		index := mime_segment_index(index_text) or { continue }
+		value := unquote_mime_value(part.all_after('=').trim_space())
+		segments[index] = if encoded {
+			if index == 0 { decode_rfc2231_value(value) } else { percent_decode(value) }
+		} else {
+			value
+		}
+	}
+	if 0 !in segments {
+		return none
+	}
+	mut out := ''
+	for i := 0; i < 128; i++ {
+		if i !in segments {
+			break
+		}
+		out += segments[i]
+	}
+	return out
+}
+
+fn mime_segment_index(value string) ?int {
+	if value == '' {
+		return none
+	}
+	mut out := 0
+	for ch in value.bytes() {
+		if ch < `0` || ch > `9` {
+			return none
+		}
+		out = out * 10 + int(ch - `0`)
+	}
+	return out
 }
 
 fn split_mime_header(value string) []string {

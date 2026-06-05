@@ -19,3 +19,14 @@ fn test_parse_nested_multipart_and_encoded_attachment_name() {
 	assert msg.attachments[0].mime_type == 'text/plain'
 	assert msg.attachments[0].bytes.bytestr() == 'attachment body'
 }
+
+fn test_parse_rfc2231_continued_attachment_name() {
+	raw := 'Subject: Continued filename\r\nContent-Type: multipart/mixed; boundary="outer"\r\n\r\n--outer\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nBody\r\n--outer\r\nContent-Type: application/pdf; name*0*=UTF-8\'\'quarterly%20; name*1*=%E2%82%AC%20; name*2=report.pdf\r\nContent-Disposition: attachment; filename*0*=UTF-8\'\'quarterly%20; filename*1*=%E2%82%AC%20; filename*2=report.pdf\r\nContent-Transfer-Encoding: base64\r\n\r\nUERG\r\n--outer--\r\n'
+	msg := parse(raw)!
+	euro := [u8(0xe2), u8(0x82), u8(0xac)].bytestr()
+	assert msg.text == 'Body'
+	assert msg.attachments.len == 1
+	assert msg.attachments[0].name == 'quarterly ' + euro + ' report.pdf'
+	assert msg.attachments[0].mime_type == 'application/pdf'
+	assert msg.attachments[0].bytes.bytestr() == 'PDF'
+}
