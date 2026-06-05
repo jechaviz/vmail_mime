@@ -50,7 +50,7 @@ fn parse_part(headers map[string]string, body string, mut parsed ParsedMessage) 
 		return
 	}
 	if parsed.text == '' {
-		text := decoded.bytestr()
+		text := decode_text_bytes(decoded, content_type)
 		if mime_type == 'text/plain' || mime_type == '' {
 			parsed.text = text.trim_space()
 		} else if mime_type == 'text/html' {

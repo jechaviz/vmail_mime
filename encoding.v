@@ -26,11 +26,13 @@ fn decode_rfc2047_header(value string) string {
 				parts := token.split('?')
 				if parts.len >= 3 {
 					encoding := parts[1].to_upper()
+					charset := parts[0]
 					payload := parts[2..].join('?')
 					out += if encoding == 'B' {
-						base64.decode_str(payload)
+						decode_charset_bytes(base64.decode(payload), charset)
 					} else if encoding == 'Q' {
-						decode_quoted_printable(payload.replace('_', ' ')).bytestr()
+						decode_charset_bytes(decode_quoted_printable(payload.replace('_', ' ')),
+							charset)
 					} else {
 						payload
 					}
@@ -47,12 +49,17 @@ fn decode_rfc2047_header(value string) string {
 
 fn decode_rfc2231_value(value string) string {
 	if value.contains("''") {
-		return percent_decode(value.all_after("''"))
+		charset := value.all_before("''")
+		return decode_charset_bytes(percent_decode_bytes(value.all_after("''")), charset)
 	}
 	return value
 }
 
 fn percent_decode(value string) string {
+	return percent_decode_bytes(value).bytestr()
+}
+
+fn percent_decode_bytes(value string) []u8 {
 	mut bytes := []u8{}
 	for i := 0; i < value.len; {
 		if value[i] == `%` && i + 2 < value.len && is_hex(value[i + 1]) && is_hex(value[i + 2]) {
@@ -63,7 +70,111 @@ fn percent_decode(value string) string {
 		bytes << value[i]
 		i++
 	}
+	return bytes
+}
+
+fn decode_text_bytes(bytes []u8, content_type string) string {
+	return decode_charset_bytes(bytes, mime_charset(content_type))
+}
+
+fn mime_charset(content_type string) string {
+	for part in split_mime_header(content_type) {
+		if !part.contains('=') {
+			continue
+		}
+		key := part.all_before('=').trim_space().to_lower()
+		if key == 'charset' {
+			return unquote_mime_value(part.all_after('=').trim_space())
+		}
+	}
+	return 'utf-8'
+}
+
+fn decode_charset_bytes(bytes []u8, charset string) string {
+	key := charset.trim_space().to_lower().replace('_', '-')
+	if key in ['', 'utf-8', 'utf8', 'us-ascii', 'ascii'] {
+		return bytes.bytestr()
+	}
+	if key in ['iso-8859-1', 'latin1', 'latin-1'] {
+		return decode_latin1_bytes(bytes)
+	}
+	if key in ['windows-1252', 'cp1252'] {
+		return decode_windows1252_bytes(bytes)
+	}
 	return bytes.bytestr()
+}
+
+fn decode_latin1_bytes(bytes []u8) string {
+	mut out := []u8{}
+	for b in bytes {
+		append_utf8_codepoint(mut out, int(b))
+	}
+	return out.bytestr()
+}
+
+fn decode_windows1252_bytes(bytes []u8) string {
+	mut out := []u8{}
+	for b in bytes {
+		append_utf8_codepoint(mut out, windows1252_codepoint(b))
+	}
+	return out.bytestr()
+}
+
+fn windows1252_codepoint(value u8) int {
+	match value {
+		0x80 { return 0x20ac }
+		0x82 { return 0x201a }
+		0x83 { return 0x0192 }
+		0x84 { return 0x201e }
+		0x85 { return 0x2026 }
+		0x86 { return 0x2020 }
+		0x87 { return 0x2021 }
+		0x88 { return 0x02c6 }
+		0x89 { return 0x2030 }
+		0x8a { return 0x0160 }
+		0x8b { return 0x2039 }
+		0x8c { return 0x0152 }
+		0x8e { return 0x017d }
+		0x91 { return 0x2018 }
+		0x92 { return 0x2019 }
+		0x93 { return 0x201c }
+		0x94 { return 0x201d }
+		0x95 { return 0x2022 }
+		0x96 { return 0x2013 }
+		0x97 { return 0x2014 }
+		0x98 { return 0x02dc }
+		0x99 { return 0x2122 }
+		0x9a { return 0x0161 }
+		0x9b { return 0x203a }
+		0x9c { return 0x0153 }
+		0x9e { return 0x017e }
+		0x9f { return 0x0178 }
+		else { return int(value) }
+	}
+}
+
+fn append_utf8_codepoint(mut out []u8, code int) {
+	if code <= 0x7f {
+		out << u8(code)
+		return
+	}
+	if code <= 0x7ff {
+		out << u8(0xc0 | (code >> 6))
+		out << u8(0x80 | (code & 0x3f))
+		return
+	}
+	if code <= 0xffff {
+		out << u8(0xe0 | (code >> 12))
+		out << u8(0x80 | ((code >> 6) & 0x3f))
+		out << u8(0x80 | (code & 0x3f))
+		return
+	}
+	if code <= 0x10ffff {
+		out << u8(0xf0 | (code >> 18))
+		out << u8(0x80 | ((code >> 12) & 0x3f))
+		out << u8(0x80 | ((code >> 6) & 0x3f))
+		out << u8(0x80 | (code & 0x3f))
+	}
 }
 
 fn decode_quoted_printable(value string) []u8 {

@@ -30,3 +30,13 @@ fn test_parse_rfc2231_continued_attachment_name() {
 	assert msg.attachments[0].mime_type == 'application/pdf'
 	assert msg.attachments[0].bytes.bytestr() == 'PDF'
 }
+
+fn test_parse_latin1_and_windows1252_charsets() {
+	raw := 'Subject: =?ISO-8859-1?Q?Ol=E1_Se=F1or?=\r\nContent-Type: multipart/mixed; boundary="outer"\r\n\r\n--outer\r\nContent-Type: text/plain; charset=ISO-8859-1\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\nOl=E1 Se=F1or\r\n--outer\r\nContent-Type: application/pdf; name*=ISO-8859-1\'\'caf%E9.pdf\r\nContent-Disposition: attachment; filename*=ISO-8859-1\'\'caf%E9.pdf\r\nContent-Transfer-Encoding: base64\r\n\r\nUERG\r\n--outer--\r\n'
+	msg := parse(raw)!
+	assert msg.subject == [u8(0x4f), 0x6c, 0xc3, 0xa1, 0x20, 0x53, 0x65, 0xc3, 0xb1, 0x6f, 0x72].bytestr()
+	assert msg.text == msg.subject
+	assert msg.attachments[0].name == [u8(0x63), 0x61, 0x66, 0xc3, 0xa9, 0x2e, 0x70, 0x64, 0x66].bytestr()
+	cp1252 := decode_charset_bytes([u8(0x93), 0x48, 0x69, 0x94], 'windows-1252')
+	assert cp1252 == [u8(0xe2), 0x80, 0x9c, 0x48, 0x69, 0xe2, 0x80, 0x9d].bytestr()
+}
