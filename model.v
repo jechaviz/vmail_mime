@@ -10,6 +10,8 @@ pub:
 pub struct Message {
 pub:
 	subject     string
+	date        string
+	date_stamp  string
 	text        string
 	attachments []Attachment
 }
@@ -17,6 +19,8 @@ pub:
 struct ParsedMessage {
 mut:
 	subject     string
+	date        string
+	date_stamp  string
 	text        string
 	attachments []Attachment
 }

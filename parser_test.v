@@ -49,3 +49,11 @@ fn test_parse_multipart_boundary_and_base64_whitespace() {
 	assert msg.attachments[0].name == 'ws.bin'
 	assert msg.attachments[0].bytes.bytestr() == 'ABCD'
 }
+
+fn test_parse_rfc2822_date_stamp() {
+	raw := 'Date: Tue, 02 Jan 2024 03:04:05 +0000\r\nSubject: Dated message\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nBody\r\n'
+	msg := parse(raw)!
+	assert msg.date == 'Tue, 02 Jan 2024 03:04:05 +0000'
+	assert msg.date_stamp == '2024-01-02 03:04:05'
+	assert mail_date_stamp('bad date') == ''
+}

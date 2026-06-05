@@ -1,20 +1,36 @@
 module vmail_mime
 
+import time
+
 pub fn parse(raw string) !Message {
 	if raw.trim_space() == '' {
 		return error('eml content is required')
 	}
 	headers_text, body := split_header_body(raw)
 	headers := parse_headers(headers_text)
+	date := header_value(headers, 'date')
 	mut parsed := ParsedMessage{
-		subject: decode_rfc2047_header(header_value(headers, 'subject'))
+		subject:    decode_rfc2047_header(header_value(headers, 'subject'))
+		date:       date
+		date_stamp: mail_date_stamp(date)
 	}
 	parse_part(headers, body, mut parsed)!
 	return Message{
 		subject:     parsed.subject
+		date:        parsed.date
+		date_stamp:  parsed.date_stamp
 		text:        parsed.text
 		attachments: parsed.attachments
 	}
+}
+
+pub fn mail_date_stamp(value string) string {
+	clean := value.trim_space()
+	if clean == '' {
+		return ''
+	}
+	parsed := time.parse_rfc2822(clean) or { return '' }
+	return parsed.format_ss()
 }
 
 fn parse_part(headers map[string]string, body string, mut parsed ParsedMessage) ! {
