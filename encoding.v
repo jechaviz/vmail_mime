@@ -47,7 +47,8 @@ fn decode_rfc2047_header(value string) string {
 					} else {
 						payload
 					}
-					i += token.len + 4
+					next := token.len + 4
+					i += next + rfc2047_adjacent_space(value[i + next..])
 					continue
 				}
 			}
@@ -56,6 +57,17 @@ fn decode_rfc2047_header(value string) string {
 		i++
 	}
 	return out.trim_space()
+}
+
+fn rfc2047_adjacent_space(value string) int {
+	mut i := 0
+	for i < value.len && value[i] in [` `, `\t`, `\r`, `\n`] {
+		i++
+	}
+	if i > 0 && i + 1 < value.len && value[i] == `=` && value[i + 1] == `?` {
+		return i
+	}
+	return 0
 }
 
 fn decode_rfc2231_value(value string) string {
