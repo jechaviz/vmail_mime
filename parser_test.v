@@ -1,5 +1,7 @@
 module vmail_mime
 
+import encoding.base64
+
 fn test_parse_plain_text_quoted_printable() {
 	msg :=
 		parse('Subject: =?UTF-8?Q?Hello_from_EML?=\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\nLine one=0ALine two\r\n')!
@@ -48,6 +50,30 @@ fn test_parse_multipart_boundary_and_base64_whitespace() {
 	assert msg.attachments.len == 1
 	assert msg.attachments[0].name == 'ws.bin'
 	assert msg.attachments[0].bytes.bytestr() == 'ABCD'
+}
+
+fn test_parse_message_rfc822_attachment_preserves_eml_file() {
+	forwarded := 'Subject: Forwarded inner\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nInner body\r\n'
+	raw :=
+		'Subject: Outer\r\nContent-Type: multipart/mixed; boundary="b1"\r\n\r\n--b1\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nOuter body\r\n--b1\r\nContent-Type: message/rfc822; name="forwarded.eml"\r\nContent-Disposition: attachment; filename="forwarded.eml"\r\nContent-Transfer-Encoding: base64\r\n\r\n' +
+		base64.encode(forwarded.bytes()) + '\r\n--b1--\r\n'
+	msg := parse(raw)!
+	assert msg.text == 'Outer body'
+	assert msg.attachments.len == 1
+	assert msg.attachments[0].name == 'forwarded.eml'
+	assert msg.attachments[0].mime_type == 'message/rfc822'
+	assert msg.attachments[0].bytes.bytestr() == forwarded
+}
+
+fn test_parse_inline_message_rfc822_recurses_decoded_body() {
+	nested := 'Subject: Forwarded inner\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nInner body\r\n'
+	raw :=
+		'Subject: Outer\r\nContent-Type: message/rfc822\r\nContent-Transfer-Encoding: base64\r\n\r\n' +
+		base64.encode(nested.bytes()) + '\r\n'
+	msg := parse(raw)!
+	assert msg.subject == 'Outer'
+	assert msg.text == 'Inner body'
+	assert msg.attachments.len == 0
 }
 
 fn test_parse_rfc2822_date_stamp() {

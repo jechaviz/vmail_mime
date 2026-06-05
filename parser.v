@@ -49,17 +49,26 @@ fn parse_part(headers map[string]string, body string, mut parsed ParsedMessage) 
 		}
 		return
 	}
+	decoded := decode_transfer_body(body, transfer_encoding)
+	filename := attachment_name(disposition, content_type)
+	decoded_filename := decode_rfc2047_header(filename)
+	is_attachment := disposition.to_lower().contains('attachment') || filename != ''
 	if mime_type == 'message/rfc822' {
-		nested_headers_text, nested_body := split_header_body(body)
+		if is_attachment {
+			parsed.attachments << Attachment{
+				name:      decoded_filename
+				mime_type: 'message/rfc822'
+				bytes:     decoded
+			}
+			return
+		}
+		nested_headers_text, nested_body := split_header_body(decoded.bytestr())
 		parse_part(parse_headers(nested_headers_text), nested_body, mut parsed)!
 		return
 	}
-	decoded := decode_transfer_body(body, transfer_encoding)
-	filename := attachment_name(disposition, content_type)
-	is_attachment := disposition.to_lower().contains('attachment') || filename != ''
 	if is_attachment || (!mime_type.starts_with('text/') && decoded.len > 0) {
 		parsed.attachments << Attachment{
-			name:      decode_rfc2047_header(filename)
+			name:      decoded_filename
 			mime_type: if mime_type == '' { 'application/octet-stream' } else { mime_type }
 			bytes:     decoded
 		}
