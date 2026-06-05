@@ -5,7 +5,7 @@ import encoding.base64
 fn decode_transfer_body(body string, encoding string) []u8 {
 	match encoding.trim_space().to_lower() {
 		'base64' {
-			return base64.decode(body.replace('\r', '').replace('\n', '').trim_space())
+			return base64.decode(compact_base64_body(body))
 		}
 		'quoted-printable' {
 			return decode_quoted_printable(body)
@@ -14,6 +14,17 @@ fn decode_transfer_body(body string, encoding string) []u8 {
 			return body.trim_right('\r\n').bytes()
 		}
 	}
+}
+
+fn compact_base64_body(body string) string {
+	mut out := []u8{}
+	for ch in body.bytes() {
+		if ch == ` ` || ch == `\t` || ch == `\r` || ch == `\n` {
+			continue
+		}
+		out << ch
+	}
+	return out.bytestr()
 }
 
 fn decode_rfc2047_header(value string) string {

@@ -203,12 +203,13 @@ fn split_multipart_body(body string, boundary string) []string {
 	mut current := ''
 	mut in_part := false
 	for line in body.replace('\r\n', '\n').split('\n') {
-		if line == delimiter || line == '${delimiter}--' {
+		trimmed_line := line.trim_right(' \t')
+		if trimmed_line == delimiter || trimmed_line == '${delimiter}--' {
 			if in_part && current != '' {
 				parts << current.trim_right('\n')
 			}
 			current = ''
-			in_part = line != '${delimiter}--'
+			in_part = trimmed_line != '${delimiter}--'
 			continue
 		}
 		if in_part {

@@ -40,3 +40,12 @@ fn test_parse_latin1_and_windows1252_charsets() {
 	cp1252 := decode_charset_bytes([u8(0x93), 0x48, 0x69, 0x94], 'windows-1252')
 	assert cp1252 == [u8(0xe2), 0x80, 0x9c, 0x48, 0x69, 0xe2, 0x80, 0x9d].bytestr()
 }
+
+fn test_parse_multipart_boundary_and_base64_whitespace() {
+	raw := 'Subject: Whitespace sample\r\nContent-Type: multipart/mixed; boundary="b1"\r\n\r\n--b1 \t\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nBody\r\n--b1  \t\r\nContent-Type: application/octet-stream; name="ws.bin"\r\nContent-Disposition: attachment; filename="ws.bin"\r\nContent-Transfer-Encoding: base64\r\n\r\nQU JD\tRA==\r\n--b1-- \t\r\n'
+	msg := parse(raw)!
+	assert msg.text == 'Body'
+	assert msg.attachments.len == 1
+	assert msg.attachments[0].name == 'ws.bin'
+	assert msg.attachments[0].bytes.bytestr() == 'ABCD'
+}
