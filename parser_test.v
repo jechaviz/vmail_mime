@@ -33,6 +33,16 @@ fn test_parse_rfc2231_continued_attachment_name() {
 	assert msg.attachments[0].bytes.bytestr() == 'PDF'
 }
 
+fn test_parse_rfc2231_language_attachment_name() {
+	raw := 'Subject: Language filename\r\nContent-Type: multipart/mixed; boundary="outer"\r\n\r\n--outer\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nBody\r\n--outer\r\nContent-Type: application/pdf; name*=UTF-8\'en\'%E2%82%AC%20rates.pdf\r\nContent-Disposition: attachment; filename*=UTF-8\'en\'%E2%82%AC%20rates.pdf\r\nContent-Transfer-Encoding: base64\r\n\r\nUERG\r\n--outer--\r\n'
+	msg := parse(raw)!
+	euro := [u8(0xe2), u8(0x82), u8(0xac)].bytestr()
+	assert msg.attachments.len == 1
+	assert msg.attachments[0].name == euro + ' rates.pdf'
+	assert msg.attachments[0].mime_type == 'application/pdf'
+	assert msg.attachments[0].bytes.bytestr() == 'PDF'
+}
+
 fn test_parse_latin1_and_windows1252_charsets() {
 	raw := 'Subject: =?ISO-8859-1?Q?Ol=E1_Se=F1or?=\r\nContent-Type: multipart/mixed; boundary="outer"\r\n\r\n--outer\r\nContent-Type: text/plain; charset=ISO-8859-1\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\nOl=E1 Se=F1or\r\n--outer\r\nContent-Type: application/pdf; name*=ISO-8859-1\'\'caf%E9.pdf\r\nContent-Disposition: attachment; filename*=ISO-8859-1\'\'caf%E9.pdf\r\nContent-Transfer-Encoding: base64\r\n\r\nUERG\r\n--outer--\r\n'
 	msg := parse(raw)!

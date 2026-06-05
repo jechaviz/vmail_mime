@@ -59,9 +59,14 @@ fn decode_rfc2047_header(value string) string {
 }
 
 fn decode_rfc2231_value(value string) string {
-	if value.contains("''") {
-		charset := value.all_before("''")
-		return decode_charset_bytes(percent_decode_bytes(value.all_after("''")), charset)
+	if first := value.index("'") {
+		if second_offset := value[first + 1..].index("'") {
+			second := first + 1 + second_offset
+			if first > 0 && second < value.len - 1 {
+				charset := value[..first]
+				return decode_charset_bytes(percent_decode_bytes(value[second + 1..]), charset)
+			}
+		}
 	}
 	return value
 }
