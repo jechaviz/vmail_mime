@@ -126,6 +126,9 @@ fn decode_charset_bytes(bytes []u8, charset string) string {
 	if key in ['iso-8859-1', 'latin1', 'latin-1'] {
 		return decode_latin1_bytes(bytes)
 	}
+	if key in ['iso-8859-2', 'iso8859-2', 'latin2', 'latin-2', 'csisolatin2'] {
+		return decode_iso_8859_2_bytes(bytes)
+	}
 	if key in ['iso-8859-15', 'iso8859-15', 'latin9', 'latin-9'] {
 		return decode_iso_8859_15_bytes(bytes)
 	}
@@ -141,6 +144,77 @@ fn decode_latin1_bytes(bytes []u8) string {
 		append_utf8_codepoint(mut out, int(b))
 	}
 	return out.bytestr()
+}
+
+fn decode_iso_8859_2_bytes(bytes []u8) string {
+	mut out := []u8{}
+	for b in bytes {
+		append_utf8_codepoint(mut out, iso_8859_2_codepoint(b))
+	}
+	return out.bytestr()
+}
+
+fn iso_8859_2_codepoint(value u8) int {
+	match value {
+		0xa1 { return 0x0104 }
+		0xa2 { return 0x02d8 }
+		0xa3 { return 0x0141 }
+		0xa5 { return 0x013d }
+		0xa6 { return 0x015a }
+		0xa9 { return 0x0160 }
+		0xaa { return 0x015e }
+		0xab { return 0x0164 }
+		0xac { return 0x0179 }
+		0xae { return 0x017d }
+		0xaf { return 0x017b }
+		0xb1 { return 0x0105 }
+		0xb2 { return 0x02db }
+		0xb3 { return 0x0142 }
+		0xb5 { return 0x013e }
+		0xb6 { return 0x015b }
+		0xb7 { return 0x02c7 }
+		0xb9 { return 0x0161 }
+		0xba { return 0x015f }
+		0xbb { return 0x0165 }
+		0xbc { return 0x017a }
+		0xbd { return 0x02dd }
+		0xbe { return 0x017e }
+		0xbf { return 0x017c }
+		0xc0 { return 0x0154 }
+		0xc3 { return 0x0102 }
+		0xc5 { return 0x0139 }
+		0xc6 { return 0x0106 }
+		0xc8 { return 0x010c }
+		0xca { return 0x0118 }
+		0xcc { return 0x011a }
+		0xcf { return 0x010e }
+		0xd0 { return 0x0110 }
+		0xd1 { return 0x0143 }
+		0xd2 { return 0x0147 }
+		0xd5 { return 0x0150 }
+		0xd8 { return 0x0158 }
+		0xd9 { return 0x016e }
+		0xdb { return 0x0170 }
+		0xde { return 0x0162 }
+		0xe0 { return 0x0155 }
+		0xe3 { return 0x0103 }
+		0xe5 { return 0x013a }
+		0xe6 { return 0x0107 }
+		0xe8 { return 0x010d }
+		0xea { return 0x0119 }
+		0xec { return 0x011b }
+		0xef { return 0x010f }
+		0xf0 { return 0x0111 }
+		0xf1 { return 0x0144 }
+		0xf2 { return 0x0148 }
+		0xf5 { return 0x0151 }
+		0xf8 { return 0x0159 }
+		0xf9 { return 0x016f }
+		0xfb { return 0x0171 }
+		0xfe { return 0x0163 }
+		0xff { return 0x02d9 }
+		else { return int(value) }
+	}
 }
 
 fn decode_iso_8859_15_bytes(bytes []u8) string {

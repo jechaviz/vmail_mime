@@ -60,6 +60,48 @@ fn test_parse_latin1_and_windows1252_charsets() {
 	assert cp1252 == [u8(0xe2), 0x80, 0x9c, 0x48, 0x69, 0xe2, 0x80, 0x9d].bytestr()
 }
 
+fn test_parse_iso_8859_2_subject_body_and_attachment_name() {
+	raw := 'Subject: =?ISO-8859-2?Q?Za=BF=F3=B3=E6_g=EA=B6l=B1_ja=BC=F1?=\r\nContent-Type: multipart/mixed; boundary="b1"\r\n\r\n--b1\r\nContent-Type: text/plain; charset=ISO-8859-2\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\nZa=BF=F3=B3=E6 g=EA=B6l=B1 ja=BC=F1\r\n--b1\r\nContent-Type: application/pdf; name*=ISO-8859-2\'\'cze%B6%E6.pdf\r\nContent-Disposition: attachment; filename*=ISO-8859-2\'\'cze%B6%E6.pdf\r\nContent-Transfer-Encoding: base64\r\n\r\nUERG\r\n--b1--\r\n'
+	expected := [
+		u8(0x5a),
+		0x61,
+		0xc5,
+		0xbc,
+		0xc3,
+		0xb3,
+		0xc5,
+		0x82,
+		0xc4,
+		0x87,
+		0x20,
+		0x67,
+		0xc4,
+		0x99,
+		0xc5,
+		0x9b,
+		0x6c,
+		0xc4,
+		0x85,
+		0x20,
+		0x6a,
+		0x61,
+		0xc5,
+		0xba,
+		0xc5,
+		0x84,
+	].bytestr()
+	attachment_name :=
+		[u8(0x63), 0x7a, 0x65, 0xc5, 0x9b, 0xc4, 0x87, 0x2e, 0x70, 0x64, 0x66].bytestr()
+	latin2_samples := [u8(0xc4), 0x84, 0xc5, 0x81, 0xc5, 0x9a, 0xc5, 0xb9].bytestr()
+	msg := parse(raw)!
+	assert msg.subject == expected
+	assert msg.text == expected
+	assert msg.attachments.len == 1
+	assert msg.attachments[0].name == attachment_name
+	assert msg.attachments[0].bytes.bytestr() == 'PDF'
+	assert decode_charset_bytes([u8(0xa1), 0xa3, 0xa6, 0xac], 'latin2') == latin2_samples
+}
+
 fn test_parse_iso_8859_15_subject_body_and_attachment_name() {
 	raw := 'Subject: =?ISO-8859-15?Q?Prix_=A4?=\r\nContent-Type: multipart/mixed; boundary="b1"\r\n\r\n--b1\r\nContent-Type: text/plain; charset=ISO-8859-15\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\nPrix =A4\r\n--b1\r\nContent-Type: application/pdf; name*=ISO-8859-15\'\'prix%20%A4.pdf\r\nContent-Disposition: attachment; filename*=ISO-8859-15\'\'prix%20%A4.pdf\r\nContent-Transfer-Encoding: base64\r\n\r\nUERG\r\n--b1--\r\n'
 	euro := [u8(0xe2), 0x82, 0xac].bytestr()
