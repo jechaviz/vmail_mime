@@ -126,6 +126,9 @@ fn decode_charset_bytes(bytes []u8, charset string) string {
 	if key in ['iso-8859-1', 'latin1', 'latin-1'] {
 		return decode_latin1_bytes(bytes)
 	}
+	if key in ['iso-8859-15', 'iso8859-15', 'latin9', 'latin-9'] {
+		return decode_iso_8859_15_bytes(bytes)
+	}
 	if key in ['windows-1252', 'cp1252'] {
 		return decode_windows1252_bytes(bytes)
 	}
@@ -138,6 +141,28 @@ fn decode_latin1_bytes(bytes []u8) string {
 		append_utf8_codepoint(mut out, int(b))
 	}
 	return out.bytestr()
+}
+
+fn decode_iso_8859_15_bytes(bytes []u8) string {
+	mut out := []u8{}
+	for b in bytes {
+		append_utf8_codepoint(mut out, iso_8859_15_codepoint(b))
+	}
+	return out.bytestr()
+}
+
+fn iso_8859_15_codepoint(value u8) int {
+	match value {
+		0xa4 { return 0x20ac }
+		0xa6 { return 0x0160 }
+		0xa8 { return 0x0161 }
+		0xb4 { return 0x017d }
+		0xb8 { return 0x017e }
+		0xbc { return 0x0152 }
+		0xbd { return 0x0153 }
+		0xbe { return 0x0178 }
+		else { return int(value) }
+	}
 }
 
 fn decode_windows1252_bytes(bytes []u8) string {

@@ -60,6 +60,33 @@ fn test_parse_latin1_and_windows1252_charsets() {
 	assert cp1252 == [u8(0xe2), 0x80, 0x9c, 0x48, 0x69, 0xe2, 0x80, 0x9d].bytestr()
 }
 
+fn test_parse_iso_8859_15_subject_body_and_attachment_name() {
+	raw := 'Subject: =?ISO-8859-15?Q?Prix_=A4?=\r\nContent-Type: multipart/mixed; boundary="b1"\r\n\r\n--b1\r\nContent-Type: text/plain; charset=ISO-8859-15\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\nPrix =A4\r\n--b1\r\nContent-Type: application/pdf; name*=ISO-8859-15\'\'prix%20%A4.pdf\r\nContent-Disposition: attachment; filename*=ISO-8859-15\'\'prix%20%A4.pdf\r\nContent-Transfer-Encoding: base64\r\n\r\nUERG\r\n--b1--\r\n'
+	euro := [u8(0xe2), 0x82, 0xac].bytestr()
+	msg := parse(raw)!
+	assert msg.subject == 'Prix ' + euro
+	assert msg.text == 'Prix ' + euro
+	assert msg.attachments.len == 1
+	assert msg.attachments[0].name == 'prix ' + euro + '.pdf'
+	assert msg.attachments[0].bytes.bytestr() == 'PDF'
+	assert decode_charset_bytes([u8(0xa6), 0xa8, 0xb4, 0xb8, 0xbc, 0xbd, 0xbe], 'latin9') == [
+		u8(0xc5),
+		0xa0,
+		0xc5,
+		0xa1,
+		0xc5,
+		0xbd,
+		0xc5,
+		0xbe,
+		0xc5,
+		0x92,
+		0xc5,
+		0x93,
+		0xc5,
+		0xb8,
+	].bytestr()
+}
+
 fn test_parse_multipart_boundary_and_base64_whitespace() {
 	raw := 'Subject: Whitespace sample\r\nContent-Type: multipart/mixed; boundary="b1"\r\n\r\n--b1 \t\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nBody\r\n--b1  \t\r\nContent-Type: application/octet-stream; name="ws.bin"\r\nContent-Disposition: attachment; filename="ws.bin"\r\nContent-Transfer-Encoding: base64\r\n\r\nQU JD\tRA==\r\n--b1-- \t\r\n'
 	msg := parse(raw)!
