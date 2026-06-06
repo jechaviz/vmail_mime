@@ -129,6 +129,9 @@ fn decode_charset_bytes(bytes []u8, charset string) string {
 	if key in ['iso-8859-2', 'iso8859-2', 'latin2', 'latin-2', 'csisolatin2'] {
 		return decode_iso_8859_2_bytes(bytes)
 	}
+	if key in ['windows-1250', 'windows1250', 'cp1250'] {
+		return decode_windows1250_bytes(bytes)
+	}
 	if key in ['iso-8859-15', 'iso8859-15', 'latin9', 'latin-9'] {
 		return decode_iso_8859_15_bytes(bytes)
 	}
@@ -214,6 +217,121 @@ fn iso_8859_2_codepoint(value u8) int {
 		0xfe { return 0x0163 }
 		0xff { return 0x02d9 }
 		else { return int(value) }
+	}
+}
+
+fn decode_windows1250_bytes(bytes []u8) string {
+	mut out := []u8{}
+	for b in bytes {
+		append_utf8_codepoint(mut out, windows1250_codepoint(b))
+	}
+	return out.bytestr()
+}
+
+fn windows1250_codepoint(value u8) int {
+	match value {
+		0x80 {
+			return 0x20ac
+		}
+		0x82 {
+			return 0x201a
+		}
+		0x84 {
+			return 0x201e
+		}
+		0x85 {
+			return 0x2026
+		}
+		0x86 {
+			return 0x2020
+		}
+		0x87 {
+			return 0x2021
+		}
+		0x89 {
+			return 0x2030
+		}
+		0x8a {
+			return 0x0160
+		}
+		0x8b {
+			return 0x2039
+		}
+		0x8c {
+			return 0x015a
+		}
+		0x8d {
+			return 0x0164
+		}
+		0x8e {
+			return 0x017d
+		}
+		0x8f {
+			return 0x0179
+		}
+		0x91 {
+			return 0x2018
+		}
+		0x92 {
+			return 0x2019
+		}
+		0x93 {
+			return 0x201c
+		}
+		0x94 {
+			return 0x201d
+		}
+		0x95 {
+			return 0x2022
+		}
+		0x96 {
+			return 0x2013
+		}
+		0x97 {
+			return 0x2014
+		}
+		0x99 {
+			return 0x2122
+		}
+		0x9a {
+			return 0x0161
+		}
+		0x9b {
+			return 0x203a
+		}
+		0x9c {
+			return 0x015b
+		}
+		0x9d {
+			return 0x0165
+		}
+		0x9e {
+			return 0x017e
+		}
+		0x9f {
+			return 0x017a
+		}
+		0xa1 {
+			return 0x02c7
+		}
+		0xa5 {
+			return 0x0104
+		}
+		0xa6, 0xa9, 0xab, 0xac, 0xae, 0xb1, 0xb5, 0xb6, 0xb7, 0xbb {
+			return int(value)
+		}
+		0xb9 {
+			return 0x0105
+		}
+		0xbc {
+			return 0x013d
+		}
+		0xbe {
+			return 0x013e
+		}
+		else {
+			return iso_8859_2_codepoint(value)
+		}
 	}
 }
 
