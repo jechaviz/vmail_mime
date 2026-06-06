@@ -29,8 +29,18 @@ pub fn mail_date_stamp(value string) string {
 	if clean == '' {
 		return ''
 	}
-	parsed := time.parse_rfc2822(clean) or { return '' }
+	parsed := time.parse_rfc2822(clean) or {
+		time.parse_rfc2822(normalized_mail_date(clean)) or { return '' }
+	}
 	return parsed.format_ss()
+}
+
+fn normalized_mail_date(value string) string {
+	fields := value.split(' ').filter(it != '')
+	if fields.len >= 5 && fields[0].len > 0 && fields[0][0] >= `0` && fields[0][0] <= `9` {
+		return 'Mon, ${fields.join(' ')}'
+	}
+	return value
 }
 
 fn parse_part(headers map[string]string, body string, mut parsed ParsedMessage) ! {

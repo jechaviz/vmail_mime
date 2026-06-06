@@ -98,5 +98,7 @@ fn test_parse_rfc2822_date_stamp() {
 	msg := parse(raw)!
 	assert msg.date == 'Tue, 02 Jan 2024 03:04:05 +0000'
 	assert msg.date_stamp == '2024-01-02 03:04:05'
+	assert mail_date_stamp('21 Feb 2018 15:11:01 +0100') == '2018-02-21 15:11:01'
+	assert mail_date_stamp('Wed, 21 Feb 2018 15:11:01 GMT') == '2018-02-21 15:11:01'
 	assert mail_date_stamp('bad date') == ''
 }
