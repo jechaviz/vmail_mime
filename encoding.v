@@ -71,20 +71,25 @@ fn rfc2047_adjacent_space(value string) int {
 }
 
 fn decode_rfc2231_value(value string) string {
-	if first := value.index("'") {
-		if second_offset := value[first + 1..].index("'") {
-			second := first + 1 + second_offset
-			if first > 0 && second < value.len - 1 {
-				charset := value[..first]
-				return decode_charset_bytes(percent_decode_bytes(value[second + 1..]), charset)
-			}
+	found, charset, payload := rfc2231_extended_value(value)
+	if found {
+		bytes := percent_decode_bytes(payload)
+		if charset != '' {
+			return decode_charset_bytes(bytes, charset)
 		}
+		return bytes.bytestr()
 	}
 	return value
 }
 
-fn percent_decode(value string) string {
-	return percent_decode_bytes(value).bytestr()
+fn rfc2231_extended_value(value string) (bool, string, string) {
+	if first := value.index("'") {
+		if second_offset := value[first + 1..].index("'") {
+			second := first + 1 + second_offset
+			return true, value[..first], value[second + 1..]
+		}
+	}
+	return false, '', value
 }
 
 fn percent_decode_bytes(value string) []u8 {

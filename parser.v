@@ -154,8 +154,13 @@ fn mime_param(value string, name string) string {
 	return ''
 }
 
+struct MimeParamSegment {
+	encoded bool
+	value   string
+}
+
 fn mime_continued_param(parts []string, needle string) ?string {
-	mut segments := map[int]string{}
+	mut segments := map[int]MimeParamSegment{}
 	for part in parts {
 		if !part.contains('=') {
 			continue
@@ -169,23 +174,43 @@ fn mime_continued_param(parts []string, needle string) ?string {
 		index_text := if encoded { raw_index[..raw_index.len - 1] } else { raw_index }
 		index := mime_segment_index(index_text) or { continue }
 		value := unquote_mime_value(part.all_after('=').trim_space())
-		segments[index] = if encoded {
-			if index == 0 { decode_rfc2231_value(value) } else { percent_decode(value) }
-		} else {
-			value
+		segments[index] = MimeParamSegment{
+			encoded: encoded
+			value:   value
 		}
 	}
 	if 0 !in segments {
 		return none
 	}
-	mut out := ''
-	for i := 0; i < 128; i++ {
-		if i !in segments {
-			break
-		}
-		out += segments[i]
+	return decode_rfc2231_segments(segments)
+}
+
+fn decode_rfc2231_segments(segments map[int]MimeParamSegment) string {
+	first := segments[0] or { return '' }
+	mut charset := ''
+	mut bytes := []u8{}
+	if first.encoded {
+		found, first_charset, payload := rfc2231_extended_value(first.value)
+		charset = first_charset
+		bytes << percent_decode_bytes(if found { payload } else { first.value })
+	} else {
+		bytes << first.value.bytes()
 	}
-	return out
+	for i := 0; i < 128; i++ {
+		if i == 0 {
+			continue
+		}
+		segment := segments[i] or { break }
+		if segment.encoded {
+			bytes << percent_decode_bytes(segment.value)
+		} else {
+			bytes << segment.value.bytes()
+		}
+	}
+	if charset != '' {
+		return decode_charset_bytes(bytes, charset)
+	}
+	return bytes.bytestr()
 }
 
 fn mime_segment_index(value string) ?int {

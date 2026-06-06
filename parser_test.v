@@ -50,6 +50,24 @@ fn test_parse_rfc2231_language_attachment_name() {
 	assert msg.attachments[0].bytes.bytestr() == 'PDF'
 }
 
+fn test_parse_folded_rfc2231_continuation_decodes_charset_after_join() {
+	raw := 'Subject: Folded filename\r\nContent-Type: multipart/mixed; boundary="b1"\r\n\r\n--b1\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nBody\r\n--b1\r\nContent-Type: application/pdf;\r\n\tname*0*=ISO-8859-1\'en\'wrong%20;\r\n\tname*1*=name.pdf\r\nContent-Disposition: attachment;\r\n\tfilename*0*=ISO-8859-1\'en\'caf;\r\n\tfilename*1*=%E9%20;\r\n\tfilename*2=report.pdf\r\nContent-Transfer-Encoding: base64\r\n\r\nUERG\r\n--b1--\r\n'
+	msg := parse(raw)!
+	e_acute := [u8(0xc3), u8(0xa9)].bytestr()
+	assert msg.text == 'Body'
+	assert msg.attachments.len == 1
+	assert msg.attachments[0].name == 'caf' + e_acute + ' report.pdf'
+	assert msg.attachments[0].bytes.bytestr() == 'PDF'
+}
+
+fn test_parse_filename_preferred_over_continued_content_type_name() {
+	raw := 'Subject: Filename priority\r\nContent-Type: multipart/mixed; boundary="b1"\r\n\r\n--b1\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nBody\r\n--b1\r\nContent-Type: application/octet-stream; name*0*=UTF-8\'\'content%20; name*1*=type.bin\r\nContent-Disposition: attachment; filename="disposition.bin"\r\nContent-Transfer-Encoding: base64\r\n\r\nQUJD\r\n--b1--\r\n'
+	msg := parse(raw)!
+	assert msg.attachments.len == 1
+	assert msg.attachments[0].name == 'disposition.bin'
+	assert msg.attachments[0].bytes.bytestr() == 'ABC'
+}
+
 fn test_parse_latin1_and_windows1252_charsets() {
 	raw := 'Subject: =?ISO-8859-1?Q?Ol=E1_Se=F1or?=\r\nContent-Type: multipart/mixed; boundary="outer"\r\n\r\n--outer\r\nContent-Type: text/plain; charset=ISO-8859-1\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\nOl=E1 Se=F1or\r\n--outer\r\nContent-Type: application/pdf; name*=ISO-8859-1\'\'caf%E9.pdf\r\nContent-Disposition: attachment; filename*=ISO-8859-1\'\'caf%E9.pdf\r\nContent-Transfer-Encoding: base64\r\n\r\nUERG\r\n--outer--\r\n'
 	msg := parse(raw)!
