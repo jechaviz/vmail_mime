@@ -252,6 +252,17 @@ fn test_parse_inline_message_rfc822_recurses_decoded_body() {
 	assert msg.attachments.len == 0
 }
 
+fn test_parse_inline_message_rfc822_with_filename_recurses_like_javamail() {
+	nested := 'Subject: Forwarded inner\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nInner body\r\n'
+	raw :=
+		'Subject: Outer\r\nContent-Type: multipart/mixed; boundary="b1"\r\n\r\n--b1\r\nContent-Type: message/rfc822; name="forwarded.eml"\r\nContent-Disposition: inline; filename="forwarded.eml"\r\nContent-Transfer-Encoding: base64\r\n\r\n' +
+		base64.encode(nested.bytes()) + '\r\n--b1--\r\n'
+	msg := parse(raw)!
+	assert msg.subject == 'Outer'
+	assert msg.text == 'Inner body'
+	assert msg.attachments.len == 0
+}
+
 fn test_parse_rfc2822_date_stamp() {
 	raw := 'Date: Tue, 02 Jan 2024 03:04:05 +0000\r\nSubject: Dated message\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nBody\r\n'
 	msg := parse(raw)!

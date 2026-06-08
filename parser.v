@@ -64,7 +64,7 @@ fn parse_part(headers map[string]string, body string, mut parsed ParsedMessage) 
 	decoded_filename := decode_rfc2047_header(filename)
 	is_attachment := disposition.to_lower().contains('attachment') || filename != ''
 	if mime_type == 'message/rfc822' {
-		if is_attachment {
+		if disposition.to_lower().contains('attachment') {
 			parsed.attachments << Attachment{
 				name:      decoded_filename
 				mime_type: 'message/rfc822'
