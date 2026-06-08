@@ -50,6 +50,18 @@ fn test_parse_rfc2231_language_attachment_name() {
 	assert msg.attachments[0].bytes.bytestr() == 'PDF'
 }
 
+fn test_parse_quoted_parameter_escapes_semicolon_and_quote() {
+	escaped_quote := [u8(`\\`), u8(`"`)].bytestr()
+	encoded_name := 'quarterly ' + escaped_quote + 'Q1; final' + escaped_quote + '.pdf'
+	raw :=
+		'Subject: Quoted filename\r\nContent-Type: multipart/mixed; boundary="outer"\r\n\r\n--outer\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nBody\r\n--outer\r\nContent-Type: application/pdf\r\nContent-Disposition: attachment; filename="' +
+		encoded_name + '"\r\nContent-Transfer-Encoding: base64\r\n\r\nUERG\r\n--outer--\r\n'
+	msg := parse(raw)!
+	assert msg.attachments.len == 1
+	assert msg.attachments[0].name == 'quarterly "Q1; final".pdf'
+	assert msg.attachments[0].bytes.bytestr() == 'PDF'
+}
+
 fn test_parse_folded_rfc2231_continuation_decodes_charset_after_join() {
 	raw := 'Subject: Folded filename\r\nContent-Type: multipart/mixed; boundary="b1"\r\n\r\n--b1\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nBody\r\n--b1\r\nContent-Type: application/pdf;\r\n\tname*0*=ISO-8859-1\'en\'wrong%20;\r\n\tname*1*=name.pdf\r\nContent-Disposition: attachment;\r\n\tfilename*0*=ISO-8859-1\'en\'caf;\r\n\tfilename*1*=%E9%20;\r\n\tfilename*2=report.pdf\r\nContent-Transfer-Encoding: base64\r\n\r\nUERG\r\n--b1--\r\n'
 	msg := parse(raw)!

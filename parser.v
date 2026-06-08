@@ -231,8 +231,19 @@ fn split_mime_header(value string) []string {
 	mut out := []string{}
 	mut current := ''
 	mut quoted := false
+	mut escaped := false
 	for i := 0; i < value.len; i++ {
 		ch := value[i]
+		if quoted && escaped {
+			current += ch.ascii_str()
+			escaped = false
+			continue
+		}
+		if quoted && ch == `\\` {
+			current += ch.ascii_str()
+			escaped = true
+			continue
+		}
 		if ch == `"` {
 			quoted = !quoted
 			current += ch.ascii_str()
@@ -252,9 +263,30 @@ fn split_mime_header(value string) []string {
 fn unquote_mime_value(value string) string {
 	clean := value.trim_space()
 	if clean.len >= 2 && clean.starts_with('"') && clean.ends_with('"') {
-		return clean[1..clean.len - 1]
+		return unescape_mime_quoted_string(clean[1..clean.len - 1])
 	}
 	return clean
+}
+
+fn unescape_mime_quoted_string(value string) string {
+	mut out := []u8{}
+	mut escaped := false
+	for ch in value.bytes() {
+		if escaped {
+			out << ch
+			escaped = false
+			continue
+		}
+		if ch == `\\` {
+			escaped = true
+			continue
+		}
+		out << ch
+	}
+	if escaped {
+		out << `\\`
+	}
+	return out.bytestr()
 }
 
 fn split_multipart_body(body string, boundary string) []string {
