@@ -253,6 +253,12 @@ fn test_parse_cyrillic_charsets_like_javamail() {
 	assert msg.attachments[0].name == attachment_name
 	assert msg.attachments[0].bytes.bytestr() == 'PDF'
 	assert decode_charset_bytes([u8(0xbf), 0xe0, 0xd8, 0xd2, 0xd5, 0xe2], 'ISO-8859-5') == russian_privet()
+
+	koi8_raw := 'Subject: =?KOI8-R?Q?=F0=D2=C9=D7=C5=D4_=CD=C9=D2?=\r\nContent-Type: multipart/mixed; boundary="b2"\r\n\r\n--b2\r\nContent-Type: text/plain; charset=KOI8-R\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n=F0=D2=C9=D7=C5=D4 =CD=C9=D2\r\n--b2\r\nContent-Type: application/pdf; name*=KOI8-R\'\'%C6%C1%CA%CC.pdf\r\nContent-Disposition: attachment; filename*=KOI8-R\'\'%C6%C1%CA%CC.pdf\r\nContent-Transfer-Encoding: base64\r\n\r\nUERG\r\n--b2--\r\n'
+	koi8_msg := parse(koi8_raw)!
+	assert koi8_msg.subject == expected
+	assert koi8_msg.text == expected
+	assert koi8_msg.attachments[0].name == attachment_name
 }
 
 fn test_parse_utf16_text_body_charsets_like_javamail() {

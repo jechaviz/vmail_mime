@@ -154,6 +154,9 @@ fn decode_charset_bytes(bytes []u8, charset string) string {
 	if key in ['iso-8859-5', 'iso8859-5', 'cyrillic', 'csisolatincyrillic'] {
 		return decode_iso_8859_5_bytes(bytes)
 	}
+	if key in ['koi8-r', 'koi8r', 'cskoi8r'] {
+		return decode_koi8_r_bytes(bytes)
+	}
 	if key in ['utf-16', 'utf16'] {
 		return decode_utf16_bytes(bytes, 'auto')
 	}
