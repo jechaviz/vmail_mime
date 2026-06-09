@@ -241,6 +241,19 @@ fn test_parse_iso_8859_15_subject_body_and_attachment_name() {
 	].bytestr()
 }
 
+fn test_parse_iso_8859_7_subject_body_and_attachment_name() {
+	raw := 'Subject: =?ISO-8859-7?Q?=CA=E1=EB=E7=EC=DD=F1=E1_=EA=FC=F3=EC=E5?=\r\nContent-Type: multipart/mixed; boundary="b1"\r\n\r\n--b1\r\nContent-Type: text/plain; charset=greek\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n=CA=E1=EB=E7=EC=DD=F1=E1 =EA=FC=F3=EC=E5\r\n--b1\r\nContent-Type: application/pdf; name*=ISO-8859-7\'\'%E1%F1%F7%E5%DF%EF.pdf\r\nContent-Disposition: attachment; filename*=ISO-8859-7\'\'%E1%F1%F7%E5%DF%EF.pdf\r\nContent-Transfer-Encoding: base64\r\n\r\nUERG\r\n--b1--\r\n'
+	expected := greek_good_morning_world()
+	attachment_name := greek_file_pdf()
+	msg := parse(raw)!
+	assert msg.subject == expected
+	assert msg.text == expected
+	assert msg.attachments.len == 1
+	assert msg.attachments[0].name == attachment_name
+	assert msg.attachments[0].bytes.bytestr() == 'PDF'
+	assert decode_charset_bytes([u8(0xca), 0xe1, 0xeb, 0xe7, 0xec], 'csisolatingreek') == expected[..10]
+}
+
 fn test_parse_cyrillic_charsets_like_javamail() {
 	raw := 'Subject: =?windows-1251?Q?=CF=F0=E8=E2=E5=F2_=EC=E8=F0?=\r\nContent-Type: multipart/mixed; boundary="b1"\r\n\r\n--b1\r\nContent-Type: text/plain; charset=windows-1251\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n=CF=F0=E8=E2=E5=F2 =EC=E8=F0\r\n--b1\r\nContent-Type: application/pdf; name*=cp1251\'\'%F4%E0%E9%EB.pdf\r\nContent-Disposition: attachment; filename*=cp1251\'\'%F4%E0%E9%EB.pdf\r\nContent-Transfer-Encoding: base64\r\n\r\nUERG\r\n--b1--\r\n'
 	expected := russian_privet_mir()
@@ -313,6 +326,59 @@ fn russian_file_pdf() string {
 		0xb9,
 		0xd0,
 		0xbb,
+		0x2e,
+		0x70,
+		0x64,
+		0x66,
+	].bytestr()
+}
+
+fn greek_good_morning_world() string {
+	return [
+		u8(0xce),
+		0x9a,
+		0xce,
+		0xb1,
+		0xce,
+		0xbb,
+		0xce,
+		0xb7,
+		0xce,
+		0xbc,
+		0xce,
+		0xad,
+		0xcf,
+		0x81,
+		0xce,
+		0xb1,
+		0x20,
+		0xce,
+		0xba,
+		0xcf,
+		0x8c,
+		0xcf,
+		0x83,
+		0xce,
+		0xbc,
+		0xce,
+		0xb5,
+	].bytestr()
+}
+
+fn greek_file_pdf() string {
+	return [
+		u8(0xce),
+		0xb1,
+		0xcf,
+		0x81,
+		0xcf,
+		0x87,
+		0xce,
+		0xb5,
+		0xce,
+		0xaf,
+		0xce,
+		0xbf,
 		0x2e,
 		0x70,
 		0x64,
