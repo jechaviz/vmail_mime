@@ -29,6 +29,21 @@ fn test_parse_nested_multipart_and_encoded_attachment_name() {
 	assert msg.attachments[0].bytes.bytestr() == 'attachment body'
 }
 
+fn test_parse_html_numeric_entities_like_javamail_jsoup() {
+	raw := 'Subject: HTML numeric entities\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n<p>Total &#8364;42 and hex &#x20AC;7 &apos;ok&apos;</p>\r\n'
+	msg := parse(raw)!
+	euro := [u8(0xe2), 0x82, 0xac].bytestr()
+	assert msg.text == "Total ${euro}42 and hex ${euro}7 'ok'"
+	assert msg.attachments.len == 0
+}
+
+fn test_parse_inline_text_plain_with_filename_is_body_like_javamail() {
+	raw := 'Subject: Inline note\r\nContent-Type: multipart/mixed; boundary="b1"\r\n\r\n--b1\r\nContent-Type: text/plain; charset=UTF-8; name="note.txt"\r\nContent-Disposition: inline; filename="note.txt"\r\n\r\nInline note body\r\n--b1--\r\n'
+	msg := parse(raw)!
+	assert msg.text == 'Inline note body'
+	assert msg.attachments.len == 0
+}
+
 fn test_parse_rfc2231_continued_attachment_name() {
 	raw := 'Subject: Continued filename\r\nContent-Type: multipart/mixed; boundary="outer"\r\n\r\n--outer\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nBody\r\n--outer\r\nContent-Type: application/pdf; name*0*=UTF-8\'\'quarterly%20; name*1*=%E2%82%AC%20; name*2=report.pdf\r\nContent-Disposition: attachment; filename*0*=UTF-8\'\'quarterly%20; filename*1*=%E2%82%AC%20; filename*2=report.pdf\r\nContent-Transfer-Encoding: base64\r\n\r\nUERG\r\n--outer--\r\n'
 	msg := parse(raw)!
