@@ -44,6 +44,13 @@ fn test_parse_inline_text_plain_with_filename_is_body_like_javamail() {
 	assert msg.attachments.len == 0
 }
 
+fn test_parse_inline_disposition_param_named_attachment_stays_body_like_javamail() {
+	raw := 'Subject: Inline note\r\nContent-Type: multipart/mixed; boundary="b1"\r\n\r\n--b1\r\nContent-Type: text/plain; charset=UTF-8; name="note.txt"\r\nContent-Disposition: inline; filename="note.txt"; comment="not an attachment"\r\n\r\nInline note body\r\n--b1--\r\n'
+	msg := parse(raw)!
+	assert msg.text == 'Inline note body'
+	assert msg.attachments.len == 0
+}
+
 fn test_parse_rfc2231_continued_attachment_name() {
 	raw := 'Subject: Continued filename\r\nContent-Type: multipart/mixed; boundary="outer"\r\n\r\n--outer\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nBody\r\n--outer\r\nContent-Type: application/pdf; name*0*=UTF-8\'\'quarterly%20; name*1*=%E2%82%AC%20; name*2=report.pdf\r\nContent-Disposition: attachment; filename*0*=UTF-8\'\'quarterly%20; filename*1*=%E2%82%AC%20; filename*2=report.pdf\r\nContent-Transfer-Encoding: base64\r\n\r\nUERG\r\n--outer--\r\n'
 	msg := parse(raw)!

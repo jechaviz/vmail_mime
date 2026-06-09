@@ -1,7 +1,7 @@
 Module {
 	name: 'vmail_mime'
 	description: 'Pure V MIME and EML parsing helpers.'
-	version: '0.10.2'
+	version: '0.10.3'
 	license: 'MIT'
 	dependencies: []
 }
