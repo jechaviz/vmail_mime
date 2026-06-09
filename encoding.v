@@ -143,7 +143,60 @@ fn decode_charset_bytes(bytes []u8, charset string) string {
 	if key in ['windows-1252', 'cp1252'] {
 		return decode_windows1252_bytes(bytes)
 	}
+	if key in ['utf-16', 'utf16'] {
+		return decode_utf16_bytes(bytes, 'auto')
+	}
+	if key in ['utf-16be', 'utf16be'] {
+		return decode_utf16_bytes(bytes, 'be')
+	}
+	if key in ['utf-16le', 'utf16le'] {
+		return decode_utf16_bytes(bytes, 'le')
+	}
 	return bytes.bytestr()
+}
+
+fn decode_utf16_bytes(bytes []u8, mode string) string {
+	if bytes.len < 2 {
+		return ''
+	}
+	mut start := 0
+	mut endian := mode
+	if bytes.len >= 2 && bytes[0] == 0xfe && bytes[1] == 0xff {
+		start = 2
+		endian = 'be'
+	} else if bytes.len >= 2 && bytes[0] == 0xff && bytes[1] == 0xfe {
+		start = 2
+		endian = 'le'
+	} else if endian == 'auto' {
+		endian = 'be'
+	}
+	mut out := []u8{}
+	mut i := start
+	for i + 1 < bytes.len {
+		unit := utf16_unit(bytes, i, endian)
+		i += 2
+		if unit >= 0xd800 && unit <= 0xdbff && i + 1 < bytes.len {
+			next := utf16_unit(bytes, i, endian)
+			if next >= 0xdc00 && next <= 0xdfff {
+				i += 2
+				code := 0x10000 + ((unit - 0xd800) * 1024) + (next - 0xdc00)
+				append_utf8_codepoint(mut out, code)
+				continue
+			}
+		}
+		if unit >= 0xdc00 && unit <= 0xdfff {
+			continue
+		}
+		append_utf8_codepoint(mut out, unit)
+	}
+	return out.bytestr()
+}
+
+fn utf16_unit(bytes []u8, offset int, endian string) int {
+	if endian == 'le' {
+		return int(bytes[offset]) + (int(bytes[offset + 1]) * 256)
+	}
+	return (int(bytes[offset]) * 256) + int(bytes[offset + 1])
 }
 
 fn decode_latin1_bytes(bytes []u8) string {

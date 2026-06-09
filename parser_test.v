@@ -234,6 +234,27 @@ fn test_parse_iso_8859_15_subject_body_and_attachment_name() {
 	].bytestr()
 }
 
+fn test_parse_utf16_text_body_charsets_like_javamail() {
+	euro := [u8(0xe2), 0x82, 0xac].bytestr()
+	utf16le_body := [u8(0xff), 0xfe, 0x55, 0x00, 0x54, 0x00, 0x46, 0x00, 0x31, 0x00, 0x36, 0x00,
+		0x20, 0x00, 0xac, 0x20]
+	raw_auto :=
+		'Subject: UTF16 auto\r\nContent-Type: text/plain; charset=UTF-16\r\nContent-Transfer-Encoding: base64\r\n\r\n' +
+		base64.encode(utf16le_body) + '\r\n'
+	auto_msg := parse(raw_auto)!
+	assert auto_msg.text == 'UTF16 ' + euro
+
+	utf16be_body := [u8(0x00), 0x42, 0x00, 0x45, 0x00, 0x20, 0x20, 0xac]
+	raw_be :=
+		'Subject: UTF16 BE\r\nContent-Type: text/plain; charset=UTF-16BE\r\nContent-Transfer-Encoding: base64\r\n\r\n' +
+		base64.encode(utf16be_body) + '\r\n'
+	be_msg := parse(raw_be)!
+	assert be_msg.text == 'BE ' + euro
+
+	utf16le_alias_body := [u8(0x4c), 0x00, 0x45, 0x00, 0x20, 0x00, 0xac, 0x20]
+	assert decode_charset_bytes(utf16le_alias_body, 'utf16le') == 'LE ' + euro
+}
+
 fn test_parse_multipart_boundary_and_base64_whitespace() {
 	raw := 'Subject: Whitespace sample\r\nContent-Type: multipart/mixed; boundary="b1"\r\n\r\n--b1 \t\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nBody\r\n--b1  \t\r\nContent-Type: application/octet-stream; name="ws.bin"\r\nContent-Disposition: attachment; filename="ws.bin"\r\nContent-Transfer-Encoding: base64\r\n\r\nQU JD\tRA==\r\n--b1-- \t\r\n'
 	msg := parse(raw)!
