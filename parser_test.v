@@ -241,6 +241,30 @@ fn test_parse_iso_8859_15_subject_body_and_attachment_name() {
 	].bytestr()
 }
 
+fn test_parse_turkish_charsets_like_javamail() {
+	raw := 'Subject: =?ISO-8859-9?Q?=DDstanbul_=D0=DD=DE_=F0=FD=FE?=\r\nContent-Type: multipart/mixed; boundary="b1"\r\n\r\n--b1\r\nContent-Type: text/plain; charset=latin5\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n=DDstanbul =D0=DD=DE =F0=FD=FE\r\n--b1\r\nContent-Type: application/pdf; name*=ISO-8859-9\'\'turk%E7e%20%D0%DD%DE.pdf\r\nContent-Disposition: attachment; filename*=ISO-8859-9\'\'turk%E7e%20%D0%DD%DE.pdf\r\nContent-Transfer-Encoding: base64\r\n\r\nUERG\r\n--b1--\r\n'
+	expected := turkish_istanbul_letters()
+	msg := parse(raw)!
+	assert msg.subject == expected
+	assert msg.text == expected
+	assert msg.attachments.len == 1
+	assert msg.attachments[0].name == turkish_file_pdf()
+	assert msg.attachments[0].bytes.bytestr() == 'PDF'
+	assert decode_charset_bytes([u8(0xd0), 0xdd, 0xde, 0x20, 0xf0, 0xfd, 0xfe], 'csisolatin5') == turkish_letter_sample()
+	assert decode_charset_bytes([u8(0x93), 0xdd, 0x94, 0xfd], 'cp1254') == [
+		u8(0xe2),
+		0x80,
+		0x9c,
+		0xc4,
+		0xb0,
+		0xe2,
+		0x80,
+		0x9d,
+		0xc4,
+		0xb1,
+	].bytestr()
+}
+
 fn test_parse_iso_8859_7_subject_body_and_attachment_name() {
 	raw := 'Subject: =?ISO-8859-7?Q?=CA=E1=EB=E7=EC=DD=F1=E1_=EA=FC=F3=EC=E5?=\r\nContent-Type: multipart/mixed; boundary="b1"\r\n\r\n--b1\r\nContent-Type: text/plain; charset=greek\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n=CA=E1=EB=E7=EC=DD=F1=E1 =EA=FC=F3=EC=E5\r\n--b1\r\nContent-Type: application/pdf; name*=ISO-8859-7\'\'%E1%F1%F7%E5%DF%EF.pdf\r\nContent-Disposition: attachment; filename*=ISO-8859-7\'\'%E1%F1%F7%E5%DF%EF.pdf\r\nContent-Transfer-Encoding: base64\r\n\r\nUERG\r\n--b1--\r\n'
 	expected := greek_good_morning_world()
@@ -379,6 +403,52 @@ fn greek_file_pdf() string {
 		0xaf,
 		0xce,
 		0xbf,
+		0x2e,
+		0x70,
+		0x64,
+		0x66,
+	].bytestr()
+}
+
+fn turkish_istanbul_letters() string {
+	return [u8(0xc4), 0xb0, 0x73, 0x74, 0x61, 0x6e, 0x62, 0x75, 0x6c, 0x20].bytestr() +
+		turkish_letter_sample()
+}
+
+fn turkish_letter_sample() string {
+	return [
+		u8(0xc4),
+		0x9e,
+		0xc4,
+		0xb0,
+		0xc5,
+		0x9e,
+		0x20,
+		0xc4,
+		0x9f,
+		0xc4,
+		0xb1,
+		0xc5,
+		0x9f,
+	].bytestr()
+}
+
+fn turkish_file_pdf() string {
+	return [
+		u8(0x74),
+		0x75,
+		0x72,
+		0x6b,
+		0xc3,
+		0xa7,
+		0x65,
+		0x20,
+		0xc4,
+		0x9e,
+		0xc4,
+		0xb0,
+		0xc5,
+		0x9e,
 		0x2e,
 		0x70,
 		0x64,

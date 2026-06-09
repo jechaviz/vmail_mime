@@ -145,8 +145,14 @@ fn decode_charset_bytes(bytes []u8, charset string) string {
 	if key in ['iso-8859-15', 'iso8859-15', 'latin9', 'latin-9'] {
 		return decode_iso_8859_15_bytes(bytes)
 	}
+	if key in ['iso-8859-9', 'iso8859-9', 'latin5', 'latin-5', 'csisolatin5', 'l5'] {
+		return decode_iso_8859_9_bytes(bytes)
+	}
 	if key in ['windows-1252', 'cp1252'] {
 		return decode_windows1252_bytes(bytes)
+	}
+	if key in ['windows-1254', 'windows1254', 'cp1254'] {
+		return decode_windows1254_bytes(bytes)
 	}
 	if key in ['windows-1251', 'windows1251', 'cp1251'] {
 		return decode_windows1251_bytes(bytes)

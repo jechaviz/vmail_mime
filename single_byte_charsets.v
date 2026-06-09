@@ -216,6 +216,26 @@ fn iso_8859_15_codepoint(value u8) int {
 	}
 }
 
+fn decode_iso_8859_9_bytes(bytes []u8) string {
+	mut out := []u8{}
+	for b in bytes {
+		append_utf8_codepoint(mut out, iso_8859_9_codepoint(b))
+	}
+	return out.bytestr()
+}
+
+fn iso_8859_9_codepoint(value u8) int {
+	match value {
+		0xd0 { return 0x011e }
+		0xdd { return 0x0130 }
+		0xde { return 0x015e }
+		0xf0 { return 0x011f }
+		0xfd { return 0x0131 }
+		0xfe { return 0x015f }
+		else { return int(value) }
+	}
+}
+
 fn decode_windows1252_bytes(bytes []u8) string {
 	mut out := []u8{}
 	for b in bytes {
@@ -254,6 +274,26 @@ fn windows1252_codepoint(value u8) int {
 		0x9e { return 0x017e }
 		0x9f { return 0x0178 }
 		else { return int(value) }
+	}
+}
+
+fn decode_windows1254_bytes(bytes []u8) string {
+	mut out := []u8{}
+	for b in bytes {
+		append_utf8_codepoint(mut out, windows1254_codepoint(b))
+	}
+	return out.bytestr()
+}
+
+fn windows1254_codepoint(value u8) int {
+	match value {
+		0xd0 { return 0x011e }
+		0xdd { return 0x0130 }
+		0xde { return 0x015e }
+		0xf0 { return 0x011f }
+		0xfd { return 0x0131 }
+		0xfe { return 0x015f }
+		else { return windows1252_codepoint(value) }
 	}
 }
 
