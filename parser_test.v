@@ -241,6 +241,20 @@ fn test_parse_iso_8859_15_subject_body_and_attachment_name() {
 	].bytestr()
 }
 
+fn test_parse_cyrillic_charsets_like_javamail() {
+	raw := 'Subject: =?windows-1251?Q?=CF=F0=E8=E2=E5=F2_=EC=E8=F0?=\r\nContent-Type: multipart/mixed; boundary="b1"\r\n\r\n--b1\r\nContent-Type: text/plain; charset=windows-1251\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n=CF=F0=E8=E2=E5=F2 =EC=E8=F0\r\n--b1\r\nContent-Type: application/pdf; name*=cp1251\'\'%F4%E0%E9%EB.pdf\r\nContent-Disposition: attachment; filename*=cp1251\'\'%F4%E0%E9%EB.pdf\r\nContent-Transfer-Encoding: base64\r\n\r\nUERG\r\n--b1--\r\n'
+	expected := russian_privet_mir()
+	attachment_name := russian_file_pdf()
+	assert decode_rfc2047_header('=?windows-1251?Q?=CF=F0=E8=E2=E5=F2_=EC=E8=F0?=') == expected
+	msg := parse(raw)!
+	assert msg.subject == expected
+	assert msg.text == expected
+	assert msg.attachments.len == 1
+	assert msg.attachments[0].name == attachment_name
+	assert msg.attachments[0].bytes.bytestr() == 'PDF'
+	assert decode_charset_bytes([u8(0xbf), 0xe0, 0xd8, 0xd2, 0xd5, 0xe2], 'ISO-8859-5') == russian_privet()
+}
+
 fn test_parse_utf16_text_body_charsets_like_javamail() {
 	euro := [u8(0xe2), 0x82, 0xac].bytestr()
 	utf16le_body := [u8(0xff), 0xfe, 0x55, 0x00, 0x54, 0x00, 0x46, 0x00, 0x31, 0x00, 0x36, 0x00,
@@ -260,6 +274,44 @@ fn test_parse_utf16_text_body_charsets_like_javamail() {
 
 	utf16le_alias_body := [u8(0x4c), 0x00, 0x45, 0x00, 0x20, 0x00, 0xac, 0x20]
 	assert decode_charset_bytes(utf16le_alias_body, 'utf16le') == 'LE ' + euro
+}
+
+fn russian_privet() string {
+	return [
+		u8(0xd0),
+		0x9f,
+		0xd1,
+		0x80,
+		0xd0,
+		0xb8,
+		0xd0,
+		0xb2,
+		0xd0,
+		0xb5,
+		0xd1,
+		0x82,
+	].bytestr()
+}
+
+fn russian_privet_mir() string {
+	return russian_privet() + ' ' + [u8(0xd0), 0xbc, 0xd0, 0xb8, 0xd1, 0x80].bytestr()
+}
+
+fn russian_file_pdf() string {
+	return [
+		u8(0xd1),
+		0x84,
+		0xd0,
+		0xb0,
+		0xd0,
+		0xb9,
+		0xd0,
+		0xbb,
+		0x2e,
+		0x70,
+		0x64,
+		0x66,
+	].bytestr()
 }
 
 fn test_parse_multipart_boundary_and_base64_whitespace() {

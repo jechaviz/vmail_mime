@@ -31,25 +31,30 @@ fn decode_rfc2047_header(value string) string {
 	mut out := ''
 	for i := 0; i < value.len; {
 		if i + 2 < value.len && value[i] == `=` && value[i + 1] == `?` {
-			rest := value[i + 2..]
-			if rest.contains('?=') {
-				token := rest.all_before('?=')
-				parts := token.split('?')
-				if parts.len >= 3 {
-					encoding := parts[1].to_upper()
-					charset := parts[0]
-					payload := parts[2..].join('?')
-					out += if encoding == 'B' {
-						decode_charset_bytes(base64.decode(payload), charset)
-					} else if encoding == 'Q' {
-						decode_charset_bytes(decode_quoted_printable(payload.replace('_', ' ')),
-							charset)
-					} else {
-						payload
+			start := i + 2
+			if charset_end_offset := value[start..].index('?') {
+				charset_end := start + charset_end_offset
+				encoding_start := charset_end + 1
+				if encoding_end_offset := value[encoding_start..].index('?') {
+					encoding_end := encoding_start + encoding_end_offset
+					payload_start := encoding_end + 1
+					if payload_end_offset := value[payload_start..].index('?=') {
+						payload_end := payload_start + payload_end_offset
+						charset := value[start..charset_end]
+						encoding := value[encoding_start..encoding_end].to_upper()
+						payload := value[payload_start..payload_end]
+						out += if encoding == 'B' {
+							decode_charset_bytes(base64.decode(payload), charset)
+						} else if encoding == 'Q' {
+							decode_charset_bytes(decode_quoted_printable(payload.replace('_', ' ')),
+								charset)
+						} else {
+							payload
+						}
+						next := payload_end + 2
+						i = next + rfc2047_adjacent_space(value[next..])
+						continue
 					}
-					next := token.len + 4
-					i += next + rfc2047_adjacent_space(value[i + next..])
-					continue
 				}
 			}
 		}
@@ -142,6 +147,12 @@ fn decode_charset_bytes(bytes []u8, charset string) string {
 	}
 	if key in ['windows-1252', 'cp1252'] {
 		return decode_windows1252_bytes(bytes)
+	}
+	if key in ['windows-1251', 'windows1251', 'cp1251'] {
+		return decode_windows1251_bytes(bytes)
+	}
+	if key in ['iso-8859-5', 'iso8859-5', 'cyrillic', 'csisolatincyrillic'] {
+		return decode_iso_8859_5_bytes(bytes)
 	}
 	if key in ['utf-16', 'utf16'] {
 		return decode_utf16_bytes(bytes, 'auto')
@@ -453,6 +464,91 @@ fn windows1252_codepoint(value u8) int {
 		0x9e { return 0x017e }
 		0x9f { return 0x0178 }
 		else { return int(value) }
+	}
+}
+
+fn decode_windows1251_bytes(bytes []u8) string {
+	mut out := []u8{}
+	for b in bytes {
+		append_utf8_codepoint(mut out, windows1251_codepoint(b))
+	}
+	return out.bytestr()
+}
+
+fn windows1251_codepoint(value u8) int {
+	if value >= 0xc0 {
+		return 0x0410 + int(value - 0xc0)
+	}
+	return match value {
+		0xa8 { 0x0401 }
+		0xb8 { 0x0451 }
+		0x80 { 0x0402 }
+		0x81 { 0x0403 }
+		0x82 { 0x201a }
+		0x83 { 0x0453 }
+		0x84 { 0x201e }
+		0x85 { 0x2026 }
+		0x86 { 0x2020 }
+		0x87 { 0x2021 }
+		0x88 { 0x20ac }
+		0x89 { 0x2030 }
+		0x8a { 0x0409 }
+		0x8b { 0x2039 }
+		0x8c { 0x040a }
+		0x8d { 0x040c }
+		0x8e { 0x040b }
+		0x8f { 0x040f }
+		0x90 { 0x0452 }
+		0x91 { 0x2018 }
+		0x92 { 0x2019 }
+		0x93 { 0x201c }
+		0x94 { 0x201d }
+		0x95 { 0x2022 }
+		0x96 { 0x2013 }
+		0x97 { 0x2014 }
+		0x99 { 0x2122 }
+		0x9a { 0x0459 }
+		0x9b { 0x203a }
+		0x9c { 0x045a }
+		0x9d { 0x045c }
+		0x9e { 0x045b }
+		0x9f { 0x045f }
+		0xaa { 0x0404 }
+		0xaf { 0x0407 }
+		0xb2 { 0x0406 }
+		0xb3 { 0x0456 }
+		0xba { 0x0454 }
+		0xbf { 0x0457 }
+		else { int(value) }
+	}
+}
+
+fn decode_iso_8859_5_bytes(bytes []u8) string {
+	mut out := []u8{}
+	for b in bytes {
+		append_utf8_codepoint(mut out, iso_8859_5_codepoint(b))
+	}
+	return out.bytestr()
+}
+
+fn iso_8859_5_codepoint(value u8) int {
+	if value >= 0xa1 && value <= 0xac {
+		return 0x0401 + int(value - 0xa1)
+	}
+	if value >= 0xae && value <= 0xef {
+		return 0x040e + int(value - 0xae)
+	}
+	if value == 0xf0 {
+		return 0x2116
+	}
+	if value >= 0xf1 && value <= 0xfc {
+		return 0x0451 + int(value - 0xf1)
+	}
+	return match value {
+		0xfd { 0x00a7 }
+		0xfe { 0x045e }
+		0xff { 0x045f }
+		else { int(value) }
 	}
 }
 
