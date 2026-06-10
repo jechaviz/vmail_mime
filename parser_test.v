@@ -495,6 +495,16 @@ fn test_parse_multipart_boundary_and_base64_whitespace() {
 	assert msg.attachments[0].bytes.bytestr() == 'ABCD'
 }
 
+fn test_parse_mime_header_comments_like_javamail() {
+	raw := 'Subject: CFWS sample\r\nContent-Type: multipart/mixed (scanner); boundary="b1"\r\n\r\n--b1\r\nContent-Type: text/plain (scanner); charset=UTF-8\r\nContent-Transfer-Encoding: quoted-printable (scanner)\r\n\r\nHello=20CFWS\r\n--b1\r\nContent-Type: application/octet-stream (scanner); name="scan (1).bin"\r\nContent-Disposition: attachment (scanner); filename="scan (1).bin"\r\nContent-Transfer-Encoding: base64 (scanner)\r\n\r\nQUJD\r\n--b1--\r\n'
+	msg := parse(raw)!
+	assert msg.text == 'Hello CFWS'
+	assert msg.attachments.len == 1
+	assert msg.attachments[0].name == 'scan (1).bin'
+	assert msg.attachments[0].mime_type == 'application/octet-stream'
+	assert msg.attachments[0].bytes.bytestr() == 'ABC'
+}
+
 fn test_parse_uuencoded_attachment_like_javamail() {
 	raw := 'Subject: UU sample\r\nContent-Type: multipart/mixed; boundary="b1"\r\n\r\n--b1\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nBody\r\n--b1\r\nContent-Type: text/plain; name="abc.txt"\r\nContent-Disposition: attachment; filename="abc.txt"\r\nContent-Transfer-Encoding: uuencode\r\n\r\nbegin 644 abc.txt\r\n#04)#\r\n`\r\nend\r\n--b1--\r\n'
 	msg := parse(raw)!

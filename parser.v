@@ -86,7 +86,7 @@ fn mail_named_timezone_offset(value string) ?string {
 fn parse_part(headers map[string]string, body string, mut parsed ParsedMessage) ! {
 	content_type := header_value(headers, 'content-type')
 	disposition := header_value(headers, 'content-disposition')
-	transfer_encoding := header_value(headers, 'content-transfer-encoding').to_lower()
+	transfer_encoding := mime_token(header_value(headers, 'content-transfer-encoding'))
 	mime_type := effective_part_mime_type(content_type, disposition)
 	is_attachment := is_attachment_disposition(disposition)
 	decoded_filename := if is_attachment {
@@ -219,16 +219,69 @@ fn effective_part_mime_type(content_type string, disposition string) string {
 }
 
 fn mime_base(value string) string {
-	return value.all_before(';').trim_space().to_lower()
+	return strip_mime_comments(value).all_before(';').trim_space().to_lower()
 }
 
 fn is_attachment_disposition(disposition string) bool {
 	return mime_base(disposition) == 'attachment'
 }
 
+fn mime_token(value string) string {
+	return strip_mime_comments(value).trim_space().to_lower()
+}
+
+fn strip_mime_comments(value string) string {
+	mut out := []u8{}
+	mut quoted := false
+	mut escaped := false
+	mut comment_depth := 0
+	for ch in value.bytes() {
+		if comment_depth > 0 {
+			if escaped {
+				escaped = false
+				continue
+			}
+			if ch == `\\` {
+				escaped = true
+				continue
+			}
+			if ch == `(` {
+				comment_depth++
+				continue
+			}
+			if ch == `)` {
+				comment_depth--
+			}
+			continue
+		}
+		if quoted {
+			out << ch
+			if escaped {
+				escaped = false
+				continue
+			}
+			if ch == `\\` {
+				escaped = true
+			} else if ch == `"` {
+				quoted = false
+			}
+			continue
+		}
+		if ch == `"` {
+			quoted = true
+			out << ch
+		} else if ch == `(` {
+			comment_depth = 1
+		} else {
+			out << ch
+		}
+	}
+	return out.bytestr()
+}
+
 fn mime_param(value string, name string) string {
 	needle := name.to_lower()
-	parts := split_mime_header(value)
+	parts := split_mime_header(strip_mime_comments(value))
 	if continued := mime_continued_param(parts, needle) {
 		return continued
 	}
