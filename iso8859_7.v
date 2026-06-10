@@ -90,3 +90,48 @@ fn iso_8859_7_codepoint(value u8) int {
 		else { return int(value) }
 	}
 }
+
+fn decode_windows1253_bytes(bytes []u8) string {
+	mut out := []u8{}
+	for b in bytes {
+		append_utf8_codepoint(mut out, windows1253_codepoint(b))
+	}
+	return out.bytestr()
+}
+
+fn windows1253_codepoint(value u8) int {
+	if value >= 0xc0 && value <= 0xfe {
+		return iso_8859_7_codepoint(value)
+	}
+	match value {
+		0x80 { return 0x20ac }
+		0x82 { return 0x201a }
+		0x83 { return 0x0192 }
+		0x84 { return 0x201e }
+		0x85 { return 0x2026 }
+		0x86 { return 0x2020 }
+		0x87 { return 0x2021 }
+		0x89 { return 0x2030 }
+		0x8b { return 0x2039 }
+		0x91 { return 0x2018 }
+		0x92 { return 0x2019 }
+		0x93 { return 0x201c }
+		0x94 { return 0x201d }
+		0x95 { return 0x2022 }
+		0x96 { return 0x2013 }
+		0x97 { return 0x2014 }
+		0x99 { return 0x2122 }
+		0x9b { return 0x203a }
+		0xa1 { return 0x0385 }
+		0xa2 { return 0x0386 }
+		0xaf { return 0x2015 }
+		0xb4 { return 0x0384 }
+		0xb8 { return 0x0388 }
+		0xb9 { return 0x0389 }
+		0xba { return 0x038a }
+		0xbc { return 0x038c }
+		0xbe { return 0x038e }
+		0xbf { return 0x038f }
+		else { return int(value) }
+	}
+}

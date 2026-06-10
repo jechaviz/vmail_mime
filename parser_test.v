@@ -276,6 +276,24 @@ fn test_parse_iso_8859_7_subject_body_and_attachment_name() {
 	assert msg.attachments[0].name == attachment_name
 	assert msg.attachments[0].bytes.bytestr() == 'PDF'
 	assert decode_charset_bytes([u8(0xca), 0xe1, 0xeb, 0xe7, 0xec], 'csisolatingreek') == expected[..10]
+
+	cp1253_raw := 'Subject: =?windows-1253?Q?=CA=E1=EB=E7=EC=DD=F1=E1_=EA=FC=F3=EC=E5?=\r\nContent-Type: multipart/mixed; boundary="b2"\r\n\r\n--b2\r\nContent-Type: text/plain; charset=cp1253\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n=CA=E1=EB=E7=EC=DD=F1=E1 =EA=FC=F3=EC=E5\r\n--b2\r\nContent-Type: application/pdf; name*=windows-1253\'\'%E1%F1%F7%E5%DF%EF.pdf\r\nContent-Disposition: attachment; filename*=windows-1253\'\'%E1%F1%F7%E5%DF%EF.pdf\r\nContent-Transfer-Encoding: base64\r\n\r\nUERG\r\n--b2--\r\n'
+	cp1253_msg := parse(cp1253_raw)!
+	assert cp1253_msg.subject == expected
+	assert cp1253_msg.text == expected
+	assert cp1253_msg.attachments[0].name == attachment_name
+	assert decode_charset_bytes([u8(0x93), 0xca, 0xe1, 0x94], 'cp1253') == [
+		u8(0xe2),
+		0x80,
+		0x9c,
+		0xce,
+		0x9a,
+		0xce,
+		0xb1,
+		0xe2,
+		0x80,
+		0x9d,
+	].bytestr()
 }
 
 fn test_parse_cyrillic_charsets_like_javamail() {
