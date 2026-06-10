@@ -47,15 +47,14 @@ fn parse_part(headers map[string]string, body string, mut parsed ParsedMessage) 
 	content_type := header_value(headers, 'content-type')
 	disposition := header_value(headers, 'content-disposition')
 	transfer_encoding := header_value(headers, 'content-transfer-encoding').to_lower()
-	mime_type := mime_base(content_type)
+	mime_type := effective_part_mime_type(content_type, disposition)
 	if mime_type.starts_with('multipart/') {
 		boundary := mime_param(content_type, 'boundary')
 		if boundary == '' {
 			return
 		}
 		for part in split_multipart_body(body, boundary) {
-			part_headers_text, part_body := split_header_body(part)
-			parse_part(parse_headers(part_headers_text), part_body, mut parsed)!
+			parse_multipart_child(mime_type, part, mut parsed)!
 		}
 		return
 	}
@@ -130,6 +129,40 @@ fn parse_headers(raw string) map[string]string {
 
 fn header_value(headers map[string]string, key string) string {
 	return headers[key.to_lower()] or { '' }
+}
+
+fn parse_multipart_child(parent_mime_type string, part string, mut parsed ParsedMessage) ! {
+	part_headers_text, part_body := split_header_body(part)
+	mut part_headers := parse_headers(part_headers_text)
+	mut body := part_body
+	if parent_mime_type == 'multipart/digest' && header_value(part_headers, 'content-type') == '' {
+		if !has_mime_part_headers(part_headers) {
+			part_headers = map[string]string{}
+			body = part
+		}
+		part_headers['content-type'] = 'message/rfc822'
+	}
+	parse_part(part_headers, body, mut parsed)!
+}
+
+fn has_mime_part_headers(headers map[string]string) bool {
+	for key, _ in headers {
+		if key.starts_with('content-') {
+			return true
+		}
+	}
+	return false
+}
+
+fn effective_part_mime_type(content_type string, disposition string) string {
+	base := mime_base(content_type)
+	if base != '' {
+		return base
+	}
+	if is_attachment_disposition(disposition) {
+		return ''
+	}
+	return 'text/plain'
 }
 
 fn mime_base(value string) string {
