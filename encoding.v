@@ -10,6 +10,9 @@ fn decode_transfer_body(body string, encoding string) []u8 {
 		'quoted-printable' {
 			return decode_quoted_printable(body)
 		}
+		'uuencode', 'x-uuencode', 'x-uue', 'uue' {
+			return decode_uuencoded(body)
+		}
 		else {
 			return body.trim_right('\r\n').bytes()
 		}
@@ -25,6 +28,89 @@ fn compact_base64_body(body string) string {
 		out << ch
 	}
 	return out.bytestr()
+}
+
+fn decode_uuencoded(body string) []u8 {
+	normalized := body.replace('\r\n', '\n').replace('\r', '\n')
+	lines := normalized.split('\n')
+	mut out := []u8{}
+	mut started := false
+	mut saw_begin := false
+	mut decoded_line := false
+	for line in lines {
+		clean := line.trim_space()
+		if !started {
+			if clean.starts_with('begin ') {
+				started = true
+				saw_begin = true
+			}
+			continue
+		}
+		if clean == 'end' {
+			break
+		}
+		decoded_line = append_uuencoded_line(line, mut out) || decoded_line
+	}
+	if !saw_begin {
+		for line in lines {
+			clean := line.trim_space()
+			if clean == '' || clean == 'end' || clean.starts_with('begin ') {
+				continue
+			}
+			decoded_line = append_uuencoded_line(line, mut out) || decoded_line
+		}
+	}
+	if !decoded_line {
+		return body.trim_right('\r\n').bytes()
+	}
+	return out
+}
+
+fn append_uuencoded_line(line string, mut out []u8) bool {
+	if line.len == 0 {
+		return false
+	}
+	mut remaining := int(uuencoded_value(line[0]))
+	if remaining == 0 {
+		return true
+	}
+	for pos := 1; remaining > 0 && pos < line.len; pos += 4 {
+		c0 := uuencoded_value_at(line, pos)
+		c1 := uuencoded_value_at(line, pos + 1)
+		c2 := uuencoded_value_at(line, pos + 2)
+		c3 := uuencoded_value_at(line, pos + 3)
+		decoded := [
+			u8((c0 << 2) | (c1 >> 4)),
+			u8(((c1 & 0x0f) << 4) | (c2 >> 2)),
+			u8(((c2 & 0x03) << 6) | c3),
+		]
+		for byte in decoded {
+			if remaining <= 0 {
+				break
+			}
+			out << byte
+			remaining--
+		}
+	}
+	return true
+}
+
+fn uuencoded_value_at(line string, index int) u32 {
+	if index >= line.len {
+		return 0
+	}
+	return uuencoded_value(line[index])
+}
+
+fn uuencoded_value(ch u8) u32 {
+	if ch == `\`` {
+		return 0
+	}
+	mut value := int(ch) - 32
+	if value < 0 {
+		value = 0
+	}
+	return u32(value & 0x3f)
 }
 
 fn decode_rfc2047_header(value string) string {
