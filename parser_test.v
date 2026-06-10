@@ -29,6 +29,18 @@ fn test_parse_nested_multipart_and_encoded_attachment_name() {
 	assert msg.attachments[0].bytes.bytestr() == 'attachment body'
 }
 
+fn test_parse_multipart_attachment_container_preserved_like_javamail() {
+	raw := 'Subject: Outer\r\nContent-Type: multipart/mixed; boundary=outer\r\n\r\n--outer\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nBody\r\n--outer\r\nContent-Type: multipart/mixed; boundary=inner\r\nContent-Disposition: attachment; filename=bundle.eml\r\n\r\n--inner\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nNested body\r\n--inner\r\nContent-Type: text/plain; name=inner.txt\r\nContent-Disposition: attachment; filename=inner.txt\r\n\r\nInner file\r\n--inner--\r\n--outer--\r\n'
+	msg := parse(raw)!
+	assert msg.text == 'Body'
+	assert msg.attachments.len == 1
+	assert msg.attachments[0].name == 'bundle.eml'
+	assert msg.attachments[0].mime_type == 'multipart/mixed'
+	payload := msg.attachments[0].bytes.bytestr()
+	assert payload.contains('--inner')
+	assert payload.contains('inner.txt')
+}
+
 fn test_parse_html_numeric_entities_like_javamail_jsoup() {
 	raw := 'Subject: HTML numeric entities\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n<p>Total &#8364;42 and hex &#x20AC;7 &apos;ok&apos;</p>\r\n'
 	msg := parse(raw)!
