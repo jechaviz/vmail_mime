@@ -97,19 +97,21 @@ fn parse_part(headers map[string]string, body string, mut parsed ParsedMessage) 
 }
 
 fn split_header_body(raw string) (string, string) {
-	if raw.contains('\r\n\r\n') {
-		return raw.all_before('\r\n\r\n'), raw.all_after('\r\n\r\n')
+	normalized := normalize_mail_newlines(raw)
+	if normalized.contains('\n\n') {
+		return normalized.all_before('\n\n'), normalized.all_after('\n\n')
 	}
-	if raw.contains('\n\n') {
-		return raw.all_before('\n\n'), raw.all_after('\n\n')
-	}
-	return raw, ''
+	return normalized, ''
+}
+
+fn normalize_mail_newlines(value string) string {
+	return value.replace('\r\n', '\n').replace('\r', '\n')
 }
 
 fn parse_headers(raw string) map[string]string {
 	mut out := map[string]string{}
 	mut current_key := ''
-	for line in raw.replace('\r\n', '\n').split('\n') {
+	for line in normalize_mail_newlines(raw).split('\n') {
 		if line == '' {
 			continue
 		}
@@ -334,7 +336,7 @@ fn split_multipart_body(body string, boundary string) []string {
 	mut parts := []string{}
 	mut current := ''
 	mut in_part := false
-	for line in body.replace('\r\n', '\n').split('\n') {
+	for line in normalize_mail_newlines(body).split('\n') {
 		trimmed_line := line.trim_right(' \t')
 		if trimmed_line == delimiter || trimmed_line == '${delimiter}--' {
 			if in_part && current != '' {
