@@ -29,8 +29,22 @@ pub fn mail_date_stamp(value string) string {
 	if clean == '' {
 		return ''
 	}
-	parsed := time.parse_rfc2822(clean) or {
-		time.parse_rfc2822(normalized_mail_date(clean)) or { return '' }
+	if stamp := parse_mail_date_stamp_candidate(clean) {
+		return stamp
+	}
+	normalized := normalized_mail_date(clean)
+	if normalized != clean {
+		if stamp := parse_mail_date_stamp_candidate(normalized) {
+			return stamp
+		}
+	}
+	return ''
+}
+
+fn parse_mail_date_stamp_candidate(value string) ?string {
+	parsed := time.parse_rfc2822(value) or {
+		zoned := normalize_mail_named_timezone(value) or { return none }
+		time.parse_rfc2822(zoned) or { return none }
 	}
 	return parsed.format_ss()
 }
@@ -41,6 +55,32 @@ fn normalized_mail_date(value string) string {
 		return 'Mon, ${fields.join(' ')}'
 	}
 	return value
+}
+
+fn normalize_mail_named_timezone(value string) ?string {
+	mut fields := value.split(' ').filter(it != '')
+	if fields.len == 0 {
+		return none
+	}
+	offset := mail_named_timezone_offset(fields[fields.len - 1]) or { return none }
+	fields[fields.len - 1] = offset
+	return fields.join(' ')
+}
+
+fn mail_named_timezone_offset(value string) ?string {
+	zone := value.trim_space().to_upper()
+	return match zone {
+		'UT', 'UTC', 'GMT' { '+0000' }
+		'EST' { '-0500' }
+		'EDT' { '-0400' }
+		'CST' { '-0600' }
+		'CDT' { '-0500' }
+		'MST' { '-0700' }
+		'MDT' { '-0600' }
+		'PST' { '-0800' }
+		'PDT' { '-0700' }
+		else { none }
+	}
 }
 
 fn parse_part(headers map[string]string, body string, mut parsed ParsedMessage) ! {
