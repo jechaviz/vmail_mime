@@ -255,6 +255,9 @@ fn decode_charset_bytes(bytes []u8, charset string) string {
 	if key in ['iso-8859-8', 'iso8859-8', 'hebrew', 'csisolatinhebrew'] {
 		return decode_iso_8859_8_bytes(bytes)
 	}
+	if key in ['windows-1255', 'windows1255', 'cp1255'] {
+		return decode_windows1255_bytes(bytes)
+	}
 	if key in ['koi8-r', 'koi8r', 'cskoi8r'] {
 		return decode_koi8_r_bytes(bytes)
 	}
