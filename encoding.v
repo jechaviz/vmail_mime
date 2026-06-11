@@ -202,7 +202,7 @@ fn decode_text_bytes(bytes []u8, content_type string) string {
 }
 
 fn mime_charset(content_type string) string {
-	for part in split_mime_header(content_type) {
+	for part in split_mime_header(strip_mime_comments(content_type)) {
 		if !part.contains('=') {
 			continue
 		}
