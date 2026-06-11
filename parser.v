@@ -89,7 +89,7 @@ fn parse_part(headers map[string]string, body string, mut parsed ParsedMessage) 
 	transfer_encoding := mime_token(header_value(headers, 'content-transfer-encoding'))
 	mime_type := effective_part_mime_type(content_type, disposition)
 	is_attachment := is_attachment_disposition(disposition)
-	decoded_filename := if is_attachment {
+	decoded_filename := if is_attachment || disposition.trim_space() == '' {
 		decode_rfc2047_header(attachment_name(disposition, content_type))
 	} else {
 		''
