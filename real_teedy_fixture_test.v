@@ -9,7 +9,7 @@ fn test_parse_real_teedy_test_mail_fixture() {
 	}
 	msg := parse(os.read_file(fixture)!)!
 	assert msg.subject == 'subject here'
-	assert msg.date_stamp == '2018-02-21 15:11:01'
+	assert msg.date_stamp == '2018-02-21 14:11:01'
 	assert msg.text.contains('content here')
 	assert msg.attachments.len == 2
 	assert msg.attachments[0].name == '14_UNHCR_nd.pdf'

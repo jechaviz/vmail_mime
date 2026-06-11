@@ -42,11 +42,11 @@ pub fn mail_date_stamp(value string) string {
 }
 
 fn parse_mail_date_stamp_candidate(value string) ?string {
-	parsed := time.parse_rfc2822(value) or {
-		zoned := normalize_mail_named_timezone(value) or { return none }
-		time.parse_rfc2822(zoned) or { return none }
-	}
-	return parsed.format_ss()
+	zoned := normalize_mail_named_timezone(value) or { value }
+	parsed := time.parse_rfc2822(zoned) or { return none }
+	offset_minutes := mail_numeric_timezone_offset_minutes(zoned) or { 0 }
+	utc_millis := parsed.unix_milli() - i64(offset_minutes) * 60 * 1000
+	return time.unix_milli(utc_millis).format_ss()
 }
 
 fn normalized_mail_date(value string) string {
@@ -81,6 +81,25 @@ fn mail_named_timezone_offset(value string) ?string {
 		'PDT' { '-0700' }
 		else { none }
 	}
+}
+
+fn mail_numeric_timezone_offset_minutes(value string) ?int {
+	fields := value.split(' ').filter(it != '')
+	if fields.len == 0 {
+		return none
+	}
+	token := fields[fields.len - 1].trim_space()
+	if token.len == 5 && (token[0] == `+` || token[0] == `-`) && token[1].is_digit()
+		&& token[2].is_digit() && token[3].is_digit() && token[4].is_digit() {
+		sign := if token[0] == `-` { -1 } else { 1 }
+		return sign * (token[1..3].int() * 60 + token[3..5].int())
+	}
+	if token.len == 6 && (token[0] == `+` || token[0] == `-`) && token[3] == `:`
+		&& token[1].is_digit() && token[2].is_digit() && token[4].is_digit() && token[5].is_digit() {
+		sign := if token[0] == `-` { -1 } else { 1 }
+		return sign * (token[1..3].int() * 60 + token[4..6].int())
+	}
+	return none
 }
 
 fn parse_part(headers map[string]string, body string, mut parsed ParsedMessage) ! {

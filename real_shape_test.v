@@ -3,7 +3,7 @@ module vmail_mime
 fn test_parse_teedy_shape_multipart_alternative_and_pdf_attachments() {
 	msg := parse(teedy_shape_eml_for_mime_test())!
 	assert msg.subject == 'subject here'
-	assert msg.date_stamp == '2018-02-21 15:11:01'
+	assert msg.date_stamp == '2018-02-21 14:11:01'
 	assert msg.text == 'content here\neven *html* *content*'
 	assert msg.attachments.len == 2
 	assert msg.attachments[0].name == '14_UNHCR_nd.pdf'
