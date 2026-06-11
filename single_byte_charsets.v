@@ -382,6 +382,28 @@ fn iso_8859_5_codepoint(value u8) int {
 	}
 }
 
+fn decode_iso_8859_8_bytes(bytes []u8) string {
+	mut out := []u8{}
+	for b in bytes {
+		append_utf8_codepoint(mut out, iso_8859_8_codepoint(b))
+	}
+	return out.bytestr()
+}
+
+fn iso_8859_8_codepoint(value u8) int {
+	if value >= 0xe0 && value <= 0xfa {
+		return 0x05d0 + int(value - 0xe0)
+	}
+	return match value {
+		0xaa { 0x00d7 }
+		0xba { 0x00f7 }
+		0xdf { 0x2017 }
+		0xfd { 0x200e }
+		0xfe { 0x200f }
+		else { int(value) }
+	}
+}
+
 fn append_utf8_codepoint(mut out []u8, code int) {
 	if code <= 0x7f {
 		out << u8(code)
